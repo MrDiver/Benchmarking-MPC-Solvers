@@ -3,7 +3,7 @@ class Algorithm:
         pass
 
     def step(self,t,q,qd):
-        pass
+        raise NotImplementedError
 
     def print_state(self):
-        pass
+        raise NotImplementedError
