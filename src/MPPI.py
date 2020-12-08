@@ -1,6 +1,5 @@
 from .core import Algorithm
 import numpy as np
-
 class MPPI(Algorithm):
     """
     K: number of samples
@@ -22,9 +21,9 @@ class MPPI(Algorithm):
         self.tc = tc
         self.ic = ic
         self.l = l
-        
-
-    def step(self,t,q,qd):
+    
+    def step(self,t,x):
+        q,qd = x[:2],x[2:]
         #x_used = np.zeros((self.T,len(x)))
         #x_used[0,:] = x
         S = np.zeros(self.K)
@@ -35,7 +34,7 @@ class MPPI(Algorithm):
             #AB HIER QDT UND QD NICHTS ANDERES 
             qt,qdt = q.copy(),qd.copy()
             for t in range(self.T):
-                Epsilon[k,t] = np.random.normal(0, self.Sigma).ravel()
+                Epsilon[k,t] = np.random.normal(self.U[t], self.Sigma).ravel() - self.U[t]  
                 # Epsilon[k,t] = np.random.multivariate_normal(self.U[t].flatten(), self.Sigma, 1).ravel()
             # Simulate the System for T Steps
             for t in range(1,self.T):
@@ -58,6 +57,9 @@ class MPPI(Algorithm):
         u0 = self.U[0]
         # update U
         self.U[:-1]=self.U[1:]
+        
+        self.U[-1] = np.zeros(self.ctrl_shape)
+        
         return u0
 
     def print_state(self):
