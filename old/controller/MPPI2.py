@@ -2,6 +2,10 @@ from .core import Algorithm
 import numpy as np
 import matplotlib.pyplot as plt
 
+#@jitclass([("K",int32),("T",int32),("output_size",int32),
+#           ("l",float64),("input_size",int32),("U",float64[:]),("Sigma",float64[:]),
+#           ("x",float64[:]),
+#           ("delta_u",float64[:]),("zero_vec",float64[:]),("S",float64[:])])
 class MPPI2(Algorithm):
     """
     K: number of samples
@@ -12,11 +16,10 @@ class MPPI2(Algorithm):
     ic: instantaneous state cost / density function
     l: scaling factor for Jensens Inequality
     """
-    def __init__(self,K,T,output_size,input_size,F=None,U=None,Sigma=None,tc=None,ic=None,l=0.02):
+    def __init__(self,K,T,output_size,input_size,F=(lambda x,u:x),U=None,Sigma=None,tc=(lambda x:0),ic=(lambda x,u:0),l=1):
         super()
         self.K=K
         self.T=T
-        self.ctrl_shape = output_size
         self.F=F
         self.U = np.zeros((T,output_size))
         self.Sigma = Sigma
@@ -32,20 +35,26 @@ class MPPI2(Algorithm):
         self.zero_vec = np.zeros(self.output_size)
         self.S = np.zeros(K)
         
+    
     def step(self,t,x_init):
         # Das geht so viel viel viel viel viel viel viel schneller um genau zu sein 90mal schneller als vorher
-        self.delta_u = np.random.multivariate_normal(self.zero_vec,self.Sigma,size=(self.K,self.T))
+        #self.delta_u = np.random.multivariate_normal(self.zero_vec,self.Sigma,size=(self.K,self.T))
+        
+        self.delta_u = np.random.normal(0,self.Sigma,(self.K,self.T,self.output_size))
         #print(self.delta_u.shape)
         for k in range(self.K):
             self.x[0,:] = x_init
             for t in range(self.T-1):
-                self.x[t+1,:] = self.F(self.x[t,:],self.U[t]+self.delta_u[k,t])
-                self.S[k] += self.q(self.x[t+1,:],self.U[t]) + self.l*self.U[t].T@np.linalg.pinv(self.Sigma)@(self.delta_u[k,t])
+                test_u = self.U[t]+self.delta_u[k,t]
+                test_u = np.clip(test_u,-2,2)
+                self.x[t+1,:],costs = self.F(self.x[t,:],test_u)
+                #cost=self.q(self.x[t+1,:],test_u) 
+                self.S[k] += costs #+ self.l*test_u.T@np.linalg.pinv(self.Sigma)@(self.delta_u[k,t])
                 #print(self.x[t+1,:])
             self.S[k] += self.phi(self.x[self.T-1,:])
             
         beta = self.S.min()
-        mink = self.S.argmin()
+        #mink = self.S.argmin()
         eta = np.sum(np.exp(-1/self.l*(self.S-beta)))
         w = 1/eta*np.exp(-1/self.l*(self.S-beta))
         erg = (self.delta_u.T*w).sum(axis=2).T
@@ -54,18 +63,26 @@ class MPPI2(Algorithm):
         # for t in range(self.T):
         #     p1 = w*self.delta_u.T[0,t]
         #     erg2[t] = np.sum(p1)
-
+        
+        #print(self.S)
+        #print(w)
+        #print(mink)
+        #print(self.S[mink])
+        
         self.U += erg
         
-        u0 = self.U[0] + self.delta_u[mink,0]#self.U[0]
+        self.U = np.clip(self.U,-2,2)
+        #self.U = np.clip(self.U,-2,2)
+        u0 = self.U[0].copy()
         
         
         # plt.plot(self.U)
         # plt.scatter(mink,1)
         # plt.show()
         
-        self.U[:-1] = self.U[1:]
-        self.U[-1] = 0
+        self.U = np.roll(self.U, -1)
+       
+        self.U[-1] = 0#self.U[-2]
         
         return u0
         
