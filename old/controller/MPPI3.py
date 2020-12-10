@@ -17,7 +17,7 @@ class MPPI3(Algorithm):
     ic: instantaneous state cost / density function
     l: scaling factor for Jensens Inequality
     """
-    def __init__(self,K,T,output_size,input_size,F=(lambda x,u:x),U=None,Sigma=None,tc=(lambda x:0),ic=(lambda x,u:0),l=1):
+    def __init__(self,K,T,output_size,input_size,F=(lambda x,u:x),U=None,Sigma=None,tc=(lambda x:0),ic=(lambda x,u:0),l=1,env=None,env_initial=None):
         super()
         self.K=K
         self.T=T
@@ -29,7 +29,6 @@ class MPPI3(Algorithm):
         self.l = l
         self.input_size = input_size
         self.output_size = output_size
-        
         self.x = np.zeros((T+1,input_size))
         np.random.seed(0)
         
@@ -38,25 +37,27 @@ class MPPI3(Algorithm):
         self.zero_vec = np.zeros(self.output_size)
         self.S = np.zeros(K)
         
-        print("U shape",self.U.shape)
-        print("noise shape",self.delta_u.shape)
-        print("cost shape",self.S.shape)
-        print("noise",self.delta_u)
+        # print("U shape",self.U.shape)
+        # print("noise shape",self.delta_u.shape)
+        # print("cost shape",self.S.shape)
+        # print("noise",self.delta_u)
         
         
         
     
-    def step(self,t,x_init):
+    def step(self,t,x_init,env_state):
         #self.delta_u = np.random.normal(0,self.Sigma,(self.K,self.T,self.output_size))
         for k in range(self.K):
             self.x[0,:] = x_init.copy()
+            current_state = env_state
             for t in range(self.T):
                 test_u = self.U[t]+self.delta_u[k,t]
                 #print("perturbed action ",t," is ",test_u)
                 
                 #test_u = np.clip(test_u,-2,2)
-                self.x[t+1,:] = self.F(self.x[t,:],test_u)
+                current_state,reward,self.x[t+1,:] = self.F(current_state,test_u) # self.F(self.x[t,:],test_u)
                 cost=self.q(self.x[t+1,:],test_u) 
+                cost+=-reward
                 self.S[k] += cost #+ self.l*test_u.T@np.linalg.pinv(self.Sigma)@(self.delta_u[k,t])
                 #print(costs)
                 #print(self.x[t+1,:])

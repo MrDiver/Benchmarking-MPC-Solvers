@@ -22,7 +22,7 @@ def TransitionModel2(x,u):
     return np.append(state.qpos,state.qvel)
     
 
-ic = (lambda x,u,: (x[1]**2+x[0]**2))
+ic = (lambda x,u,: x[1]**2+x[0]**2)
 tc = (lambda x: 10*x[0]**2+x[1]**2+x[2]**2+x[3]**2)
 
 solver = MPPI3(100,20,1,4,F=TransitionModel2,Sigma=np.eye(1)*3,tc=tc,ic=ic,l=10)
