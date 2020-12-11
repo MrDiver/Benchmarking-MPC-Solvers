@@ -1,6 +1,5 @@
-class Env:
+class Environment:
     def __init__(self) -> None:
-        super().__init__()
         self.name = "BaseEnvironment"
         self.history = None
         self.state = None
