@@ -1,5 +1,5 @@
-import src.envs.Pendulum_CC as pend
-import src.envs.Cartpole_CC as cartp
+#import scripts.envs.Pendulum_CC as pend
+#import scripts.envs.Cartpole_CC as cartp
 import old.controller.MPPI3 as mppi
 import numpy as np
 
@@ -48,12 +48,15 @@ def angle_normalize(x):
 #     costs = angle_normalize(th) ** 2 + .1 * th_dot ** 2 + .001 * (u ** 2)
 #     return costs
 
-#ic = (lambda x,u: 3*(np.pi-x[2])**2 + 0.1*x[1]**2 + 0.1*x[3]**2 + 0*(x[0])**2)
-#tc = (lambda x: 3*x[0]**2 + 1*x[1]**2 + 3*x[3]**2)
+#ic = (lambda x,u: 3*(np.pi-x[2])**2 + 0.1*x[1]**2 + 0.2*x[3]**2 + 3*(np.abs(x[0])+1)**2)
+#tc = (lambda x: 5*(np.abs(x[0])+1)**2 + 1*x[1]**2 + 3*x[3]**2)
 
 
 #env = pend.PendulumEnv()#cartp.CartPoleEnv()
-ENVIRONMENT = "HalfCheetah-v2"
+ENVIRONMENT = "CartPoleSwingUp-v0"
+ENVIRONMENT = "MountainCarContinuous-v0"
+ENVIRONMENT = "Pendulum-v0"
+ENVIRONMENT = "FetchPush-v1"
 env = gym.make(ENVIRONMENT)
 #ENV_NAME = "Pendulum-v0"
 #env = gym.make(ENV_NAME)
@@ -78,10 +81,10 @@ def MJF(x,u):
     newx = np.append(env.sim.data.qpos,env.sim.data.qvel)
     return newx,r,obs
 
-solver = mppi.MPPI3(K=20,T=20,output_size=1,input_size=17,F=MJF,Sigma=10,tc=tc,ic=ic,l=0.5)
+solver = mppi.MPPI3(K=100,T=100,output_size=1,input_size=6,F=F,Sigma=10,tc=tc,ic=ic,l=0.5)
 #input()
 
-is_mujoco = True
+is_mujoco = False
 
 current_state = None
 for t in range(1000):
@@ -102,5 +105,6 @@ for t in range(1000):
     env.render()
     if(done):
         env.reset()
-    
+
+
 #input()
