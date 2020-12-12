@@ -6,4 +6,5 @@ ENVIRONMENT = "CartPoleSwingUp-v0"
 env = GEW(ENVIRONMENT)
 
 for i in range(1000):
+    env.step(0)
     env.render()
