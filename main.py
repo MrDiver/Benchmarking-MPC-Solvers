@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from src.MPPI2 import MPPI2
 from src.MPPI import MPPI
+from src.CEM import CEM
 
 model = load_model_from_path("mjxml/inverted_pendulum.xml")
 
@@ -23,14 +24,15 @@ def TransitionModel2(x,u):
     return np.append(state.qpos,state.qvel)
     
 
-ic2 = (lambda q,qd,u,: 10*q[1]**2 + qd[1]**2)
+ic2 = (lambda q,qd,u,: 10*q[1]**2 + qd[1]**2 + q[0]**2)
 tc2 = (lambda q,qd: q[0]**2 )
 #ic = (lambda q,qd,u,: q[0]**2 + u**4)
-ic = (lambda x,u,: 10*x[1]**2 + x[3]**2)
+ic = (lambda x,u,: x[1]**2 + 0.1*x[0]**2)
 tc = (lambda x: x[0]**2 )
 
-solver = MPPI2(50,20,1,4,F=TransitionModel2,Sigma=np.eye(1)*0.01,tc=tc,ic=ic,l=0.25)
+#solver = MPPI2(50,20,1,4,F=TransitionModel2,Sigma=np.eye(1)*0.01,tc=tc,ic=ic,l=0.25)
 solver2 = MPPI(50,20,(1,1),F=TransitionModel,Sigma=np.eye(1)*0.01,tc=tc2,ic=ic2,l=0.25)
+solver = CEM(input_size=4, output_size=1, max_iter=100, n_samples=100, num_elite=10, cost_function=ic, F=TransitionModel2)
 def main():
     
     sim = MjSim(model=model)
@@ -52,9 +54,9 @@ def main():
         #u = np.round(100*q[1])/10 + 1*(q[0]-q[1])
         sim.data.ctrl[:] = u
         # print(iteration)
-        # print("u",u)
-        # print("q",q)
-        # print("qd",qd)
+        #print("u",u)
+        #print("q",q)
+        #print("qd",qd)
         # print("cost:",ic(q,qd,u))
         # print("tcost:",tc(q,qd))
         
