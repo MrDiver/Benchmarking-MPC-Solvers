@@ -25,6 +25,7 @@ class CEM(Agent):
         self.variance = np.eye(output_size)*params["variance"]
 
         def f(state, sample):
+            sample = [sample]
             self.model.predict(state, sample)
             return self.model.get_reward()
         self.f = np.vectorize(f)
@@ -53,4 +54,4 @@ class CEM(Agent):
             if np.abs(last_mean - self.mean) <= self.epsilon:
                 break
 
-        return np.clip(self.mean, self.bounds_low, self.bounds_high)
+        return np.clip([self.mean], self.bounds_low, self.bounds_high)

@@ -23,7 +23,7 @@ mppi = MPPI(env.bounds_low, env.bounds_high, 4, 1, model, params_mppi)
 
 
 for i in range(1000):
-    action = mppi.calc_action(env.state)
+    action = cem.calc_action(env.state)
     _, r, done, _ = env.step(action)
     #print(action, "with reward", r)
     env.render()
