@@ -22,36 +22,44 @@ class CEM(Agent):
         self.instant_cost = params["instant_cost"]
         # Distribution over output parameters
         self.mean = np.zeros(output_size)
-        self.variance = np.eye(output_size)*params["variance"]
+        self.variance = params["variance"]
 
         def f(state, sample):
-            sample = [sample]
+            # print(sample)
             self.model.predict(state, sample)
             return self.model.get_reward()
-        self.f = np.vectorize(f)
-        self.f.excluded.add(0)
+        self.f = f
 
     def calc_action(self, x):
         last_mean = self.mean
         for _ in range(self.max_iter):
             samples = self.mean + \
-                np.random.normal(0, self.variance, size=(
+                np.random.normal(0, np.sqrt(self.variance), size=(
                     self.n_samples, self.output_size))
+            print(samples)
+            #samples = np.clip(samples, self.bounds_low, self.bounds_high)
+            rewards = np.array([self.f(x,sample) for sample in samples])
 
-            # samples = np.clip(samples, self.bounds_low, self.bounds_high)
-            rewards = self.f(x, samples)
             # costs = [self.instant_cost(state, 0) for state in states]
             # print("Cost", self.cost_function(x,0))
-            elites = samples[np.argsort(-rewards)][: self.n_elite]
-            # print("Samples:", costs)
+
+            elites = samples[np.argsort(-np.array(rewards))][: self.n_elite]
+            
             # print("Args:",np.argsort(costs))
+            
             new_mean = np.mean(elites, axis=0)
-        # new_var = np.var(elites, axis=0)
+            
+            new_var = np.var(elites, axis=0)
 
             self.mean = self.alpha * self.mean + (1 - self.alpha) * new_mean
-            # self.variance = self.alpha * self.variance + (1 - self.alpha) * new_var
+            # print(self.mean)
+            
+            #print(self.mean)
+            self.variance = self.alpha * self.variance + (1 - self.alpha) * new_var
+            #print(last_mean)
+            #print(self.mean)
 
             if np.abs(last_mean - self.mean) <= self.epsilon:
                 break
 
-        return np.clip([self.mean], self.bounds_low, self.bounds_high)
+        return np.clip(self.mean, self.bounds_low, self.bounds_high)
