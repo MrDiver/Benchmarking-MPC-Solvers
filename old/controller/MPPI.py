@@ -1,5 +1,6 @@
 from .core import Algorithm
 import numpy as np
+
 class MPPI(Algorithm):
     """
     K: number of samples
