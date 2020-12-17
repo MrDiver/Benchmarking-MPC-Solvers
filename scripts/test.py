@@ -1,4 +1,5 @@
 from MPCBenchmark.envs.gym_wrapper import GymWrapperEnv as GEW
+from MPCBenchmark.envs.mujym_wrapper import MujymWrapperEnv as MEW
 from MPCBenchmark.models.gym_model import GymEnvModel as GEM
 from MPCBenchmark.agents.mppi import MPPI
 from MPCBenchmark.agents.cem import CEM
@@ -12,8 +13,8 @@ ENVIRONMENT = "Pendulum-v0"
 #ENVIRONMENT = "CartPoleSwingUp-v0"
 env = GEW(ENVIRONMENT)
 model = GEM(ENVIRONMENT)
-params_cem = {"max_iter": 50, "n_samples": 50,
-              "n_elite": 25, "epsilon": 1e-5, "alpha": 0, "instant_cost": (lambda x, u: 0), "variance": 1}
+params_cem = {"K": 20, "T": 20, "max_iter": 10, "n_samples": 20,
+              "n_elite": 5, "epsilon": 1e-5, "alpha": 0, "instant_cost": (lambda x, u: 0), "variance": 1}
 
 params_mppi = {"K": 50, "T": 50, "Sigma": np.eye(1)*0.1,
                "terminal_cost": (lambda x: 0), "instant_cost": (lambda x, u: 0),

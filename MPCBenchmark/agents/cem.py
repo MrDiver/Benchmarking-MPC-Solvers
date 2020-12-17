@@ -14,6 +14,9 @@ class CEM(Agent):
 
     def __init__(self, bounds_low, bounds_high, input_size, output_size, model, params: dict) -> None:
         super().__init__(bounds_low, bounds_high, input_size, output_size, model)
+        self.K = params["K"]
+        self.T = params["T"]
+        self.U = np.zeros((self.T, self.output_size), dtype=np.float64)
         self.max_iter = params["max_iter"]
         self.n_samples = params["n_samples"]
         self.n_elite = params["n_elite"]
@@ -21,28 +24,28 @@ class CEM(Agent):
         self.alpha = params["alpha"]
         self.instant_cost = params["instant_cost"]
         # Distribution over output parameters
-        self.mean = np.zeros(output_size)
         self.variance = params["variance"]
+        self.mean = np.zeros((self.T, self.output_size))
+
         def f(state, sample):
-            # print(sample)
-            state = self.model.predict(state, sample)
-            self.model.predict(state,np.zeros(self.output_size))
-            return self.model.get_reward()
+            reward = 0
+            for at in sample:
+                state = self.model.predict(state, at)
+                reward += self.model.get_reward()
+            return reward
         self.f = f
 
-    
-
     def calc_action(self, x):
-        self.mean = np.zeros(self.output_size)
         variance = self.variance
         for _ in range(self.max_iter):
-            samples = self.mean + \
-                np.random.normal(0, np.sqrt(variance), size=(
-                    self.n_samples, self.output_size))
+            samples = self.mean + np.random.normal(0, np.sqrt(variance), size=(
+                (self.n_samples, self.T, self.output_size)))
+
             # print(samples)
             samples = np.clip(samples, self.bounds_low, self.bounds_high)
-            rewards = np.array([self.f(x,sample) for sample in samples])
-            #print("samples",samples)
+
+            rewards = np.array([self.f(x, sample) for sample in samples])
+            # print("samples",samples)
             # costs = [self.instant_cost(state, 0) for state in states]
             # print("Cost", self.cost_function(x,0))
 
@@ -50,23 +53,26 @@ class CEM(Agent):
             # print(-rewards)
             # print(samples[np.argsort(-rewards)].flatten())
             # return 0
-            #print("elites",elites)
+            # print("elites",elites)
             # print("Args:",np.argsort(costs))
-            
+
             new_mean = np.mean(elites, axis=0)
-            #print("Mean",new_mean)
+            # print("Mean",new_mean)
             new_var = np.var(elites, axis=0)
-            #print(new_var)
+            new_var = np.mean(new_var)
+            # print(new_var)
 
             self.mean = self.alpha * self.mean + (1 - self.alpha) * new_mean
             # print(self.mean)
-            
-            #print(self.mean)
-            variance = self.alpha * variance + (1 - self.alpha) * new_var
-            #print(variance)
-            #print(self.mean)
 
+            # print(self.mean)
+            variance = self.alpha * variance + (1 - self.alpha) * new_var
+            # print(variance)
+            # print(self.mean)
+            u0 = self.mean[0]
+            self.mean = np.roll(self.mean, -1)
+            self.mean[-1] = 0
             if variance < self.epsilon:
                 break
 
-        return np.clip(self.mean, self.bounds_low, self.bounds_high)
+        return np.clip(u0, self.bounds_low, self.bounds_high)
