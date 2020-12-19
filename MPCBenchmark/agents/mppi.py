@@ -9,14 +9,14 @@ class MPPI(Agent):
         self.K = params["K"]
         self.T = params["T"]
         self.U = np.zeros((self.T, self.output_size), dtype=np.float64)
-        self.Sigma = params["Sigma"]
+        self.std = np.ones((1, 1))*params["std"]
         self.terminal_cost = params["terminal_cost"]
         self.instant_cost = params["instant_cost"]
         self.lam = params["lam"]
         self.x = np.zeros((self.T+1, input_size))
 
         self.delta_u = np.random.normal(
-            0, self.Sigma, (self.K, self.T, self.output_size))
+            0, self.std, (self.K, self.T, self.output_size))
         self.S = np.zeros(self.K)
 
     def calc_action(self, state):
@@ -30,7 +30,7 @@ class MPPI(Agent):
                 cost = self.instant_cost(self.model.get_reward(), test_u)
                 cost += -reward
                 self.S[k] += cost + self.lam * \
-                    test_u.T@np.linalg.pinv(self.Sigma)@(self.delta_u[k, t])
+                    test_u.T@np.linalg.pinv(self.std**2)@(self.delta_u[k, t])
                 # print(costs)
                 # print(self.x[t+1,:])
             self.S[k] += self.terminal_cost(self.model.get_observation())

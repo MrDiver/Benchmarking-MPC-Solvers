@@ -9,14 +9,14 @@ import gym_cartpole_swingup
 
 ENVIRONMENT = "CartPole-v0"
 ENVIRONMENT = "Pendulum-v0"
-#ENVIRONMENT = "InvertedPendulum-v2"
+ENVIRONMENT = "InvertedPendulum-v2"
 #ENVIRONMENT = "CartPoleSwingUp-v0"
-env = GEW(ENVIRONMENT)
+env = MEW(ENVIRONMENT)
 model = GEM(ENVIRONMENT)
-params_cem = {"K": 20, "T": 20, "max_iter": 10, "n_samples": 20,
-              "n_elite": 5, "epsilon": 1e-5, "alpha": 0, "instant_cost": (lambda x, u: 0), "variance": 1}
+params_cem = {"K": 50, "T": 50, "max_iter": 1,
+              "n_elite": 5, "epsilon": 1e-5, "alpha": 0, "instant_cost": (lambda x, u: 0), "std": 1}
 
-params_mppi = {"K": 50, "T": 50, "Sigma": np.eye(1)*0.1,
+params_mppi = {"K": 50, "T": 50, "std": 1,
                "terminal_cost": (lambda x: 0), "instant_cost": (lambda x, u: 0),
                "lam": 0.2}
 
@@ -25,9 +25,9 @@ mppi = MPPI(env.bounds_low, env.bounds_high, 4, 1, model, params_mppi)
 
 
 for i in range(1000):
-    action = cem.calc_action(env.state)
-    _, r, done, _ = env.step(action)
-    print(action, "with reward", r)
+    # action = cem.calc_action(env.state)
+    _, r, done, _ = env.step(0)
+    # print(action, "with reward", r)
     env.render()
     if done:
         env.reset()

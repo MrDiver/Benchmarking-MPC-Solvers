@@ -1,5 +1,6 @@
 from MPCBenchmark.agents.agent import Agent
 from MPCBenchmark.models.model import Model
+import multiprocessing as mp
 import numpy as np
 
 
@@ -18,14 +19,15 @@ class CEM(Agent):
         self.T = params["T"]
         self.U = np.zeros((self.T, self.output_size), dtype=np.float64)
         self.max_iter = params["max_iter"]
-        self.n_samples = params["n_samples"]
+        #self.K = params["n_samples"]
         self.n_elite = params["n_elite"]
         self.epsilon = params["epsilon"]
         self.alpha = params["alpha"]
         self.instant_cost = params["instant_cost"]
         # Distribution over output parameters
-        self.variance = params["variance"]
-        self.mean = np.zeros((self.T, self.output_size))
+        self.std = np.ones((self.T, output_size))*params["std"]
+        self.mean = np.zeros((self.T, output_size))
+        self.pool = mp.Pool(12)
 
         def f(state, sample):
             reward = 0
@@ -36,43 +38,23 @@ class CEM(Agent):
         self.f = f
 
     def calc_action(self, x):
-        variance = self.variance
+        std = self.std
         for _ in range(self.max_iter):
-            samples = self.mean + np.random.normal(0, np.sqrt(variance), size=(
-                (self.n_samples, self.T, self.output_size)))
-
-            # print(samples)
+            samples = np.random.normal(
+                self.mean, std, (self.K, self.T, self.output_size))
             samples = np.clip(samples, self.bounds_low, self.bounds_high)
-
             rewards = np.array([self.f(x, sample) for sample in samples])
-            # print("samples",samples)
-            # costs = [self.instant_cost(state, 0) for state in states]
-            # print("Cost", self.cost_function(x,0))
-
             elites = samples[np.argsort(-rewards)][: self.n_elite]
-            # print(-rewards)
-            # print(samples[np.argsort(-rewards)].flatten())
-            # return 0
-            # print("elites",elites)
-            # print("Args:",np.argsort(costs))
 
             new_mean = np.mean(elites, axis=0)
-            # print("Mean",new_mean)
-            new_var = np.var(elites, axis=0)
-            new_var = np.mean(new_var)
-            # print(new_var)
-
+            new_std = np.std(elites, axis=0)
             self.mean = self.alpha * self.mean + (1 - self.alpha) * new_mean
-            # print(self.mean)
+            std = self.alpha * std + (1 - self.alpha) * new_std
 
-            # print(self.mean)
-            variance = self.alpha * variance + (1 - self.alpha) * new_var
-            # print(variance)
-            # print(self.mean)
             u0 = self.mean[0]
             self.mean = np.roll(self.mean, -1)
             self.mean[-1] = 0
-            if variance < self.epsilon:
+            if (std < self.epsilon).all():
                 break
 
         return np.clip(u0, self.bounds_low, self.bounds_high)
