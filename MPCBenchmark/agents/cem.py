@@ -1,5 +1,4 @@
 from MPCBenchmark.agents.agent import Agent
-from MPCBenchmark.models.model import Model
 import multiprocessing as mp
 import numpy as np
 
