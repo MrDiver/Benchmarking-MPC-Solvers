@@ -16,7 +16,7 @@ class GymEnvModel(Model):
         #    print("RuntimeWarning: Actions out of action space for this model")
         self.env.reset()
         self.env.env.state = current_state
-        obs, r, done, _ = self.env.step(action)
+        obs, r, _, _ = self.env.step(action)
         newstate = self.env.state
         self.last_reward = r
         self.last_observation = obs
