@@ -15,8 +15,8 @@ ENVIRONMENT = "CartPoleSwingUp-v1"
 env = GEW(ENVIRONMENT)
 model = GEM(ENVIRONMENT)
 #model = CSM()
-params_cem = {"K": 25, "T": 25, "max_iter": 5,
-              "n_elite": 20, "epsilon": 1e-5, "alpha": 0.2, "instant_cost": (lambda x, u: 0), "std": 1}
+params_cem = {"K": 100, "T": 20, "max_iter": 5,
+              "n_elite": 50, "epsilon": 1e-5, "alpha": 0.2, "instant_cost": (lambda x, u: 0), "std": 1}
 
 params_mppi = {"K": 25, "T": 25, "std": 1,
                "terminal_cost": (lambda x: 3*x[1]**2), "instant_cost": (lambda x, u: 0),
@@ -26,7 +26,7 @@ cem = CEM(env.bounds_low, env.bounds_high, 4, 1, model, params_cem)
 mppi = MPPI(env.bounds_low, env.bounds_high, 4, 1, model, params_mppi)
 
 
-for i in range(1000):
+for i in range(125):
     action = cem.calc_action(env.state)
     _, r, done, _ = env.step(action)
     # print(action, "with reward", r)
