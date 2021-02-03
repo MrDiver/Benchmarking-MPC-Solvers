@@ -1,47 +1,45 @@
 import numpy as np
+import numdifftools as nd
 
 from MPCBenchmark.agents.agent import Agent
 
 
 class ILQR(Agent):
 
-    def __init__(self, config, model) -> None:
-        super().__init__(config, model)
+    def __init__(self, bounds_low, bounds_high, input_size, output_size, model, params: dict) -> None:
+        super().__init__(bounds_low, bounds_high, input_size, output_size, model)
 
-        self.max_iter = config.opt_config["iLQR"]["max_iter"]
-        self.init_mu = config.opt_config["iLQR"]["init_mu"]
+        self.max_iter = params["max_iter"]
+        self.init_mu = params["init_mu"]
         self.mu = self.init_mu
-        self.min_mu = config.opt_config["iLQR"]["mu_min"]
-        self.max_mu = config.opt_config["iLQR"]["mu_max"]
-        self.init_delta = config.opt_config["iLQR"]["init_delta"]
+        self.min_mu = params["mu_min"]
+        self.max_mu = params["mu_max"]
+        self.init_delta = params["init_delta"]
         self.delta = self.init_delta
-        self.threshold = config.opt_config["iLQR"]["threshold"]
+        self.threshold = params["threshold"]
 
         # general parameters
         #self.pred_len = config.PRED_LEN
         #self.input_size = config.INPUT_SIZE
-        self.dt = config.DT
+        #self.dt = config.DT
 
         self.delta = self.init_delta
-        self.bounds_high = np.tile(config.INPUT_UPPER_BOUND,
-                                   self.output_size)
-        self.bounds_low = np.tile(config.INPUT_LOWER_BOUND,
-                                  self.output_size)
+        self.bounds_high = bounds_high
+        self.bounds_low = bounds_low
 
         # get cost func
-        self.state_cost = config.state_cost_fn
-        self.terminal_cost = config.terminal_state_cost_fn
-        self.input_cost = config.input_cost_fn
-        self.gradient_cost_fn_with_state = config.gradient_cost_fn_with_state
-        self.gradient_cost_fn_with_input = config.gradient_cost_fn_with_input
-        self.hessian_cost_fn_with_state = config.hessian_cost_fn_with_state
-        self.hessian_cost_fn_with_input = config.hessian_cost_fn_with_input
-        self.hessian_cost_fn_with_input_state = \
-            config.hessian_cost_fn_with_input_state
+        self.state_cost = params["state_cost"]
+        self.terminal_cost = params["terminal_cost"]
+        self.input_cost = params["input_cost"]
+        self.gradient_cost_state = nd.core.Gradient(self.state_cost)
+        self.gradient_cost_input = nd.core.Gradient(self.input_cost)
+        self.hessian_cost_state = nd.core.Hessian(self.state_cost, self.state_cost)
+        self.hessian_cost_input = nd.core.Hessian(self.input_cost, self.input_cost)
+        self.hessian_cost_input_state = nd.core.Hessian(self.input_cost, self.state_cost)
 
         self.prev_sol = np.zeros((self.output_size, self.input_size))
 
-    def calc_action(self, state, optimal_solution):
+    def calc_action(self, state):
         self.prev_sol = np.zeros((self.output_size, self.input_size))
         current_state = state
         # previous solution
@@ -145,8 +143,8 @@ class ILQR(Agent):
                          self.input_cost,
                          self.terminal_cost)
 
-        f_x = self.model.calc_f_x(xs[:-1], solution, self.dt)
-        f_u = self.model.calc_f_u(xs[:-1], solution, self.dt)
+        f_x = nd.core.Gradient(xs[:-1])
+        f_u = nd.core.Gradient(xs[:-1])
 
         l_x, l_xx, l_u, l_uu, l_ux = \
             self._calc_gradient_hessian_cost(xs, optimal_solution, solution)
@@ -154,28 +152,26 @@ class ILQR(Agent):
         return xs, cost, f_x, f_u, l_x, l_xx, l_u, l_uu, l_ux
 
     def _calc_gradient_hessian_cost(self, pred_xs, g_x, sol):
-        l_x = self.gradient_cost_fn_with_state(pred_xs[:-1],
+        l_x = self.gradient_cost_state(pred_xs[:-1],
                                                g_x[:-1], terminal=False)
         terminal_l_x = \
-            self.gradient_cost_fn_with_state(pred_xs[-1],
+            self.gradient_cost_state(pred_xs[-1],
                                              g_x[-1], terminal=True)
 
         l_x = np.concatenate((l_x, terminal_l_x), axis=0)
 
-        # l_u.shape = (pred_len, input_size)
-        l_u = self.gradient_cost_fn_with_input(pred_xs[:-1], sol)
+        l_u = self.gradient_cost_input(pred_xs[:-1], sol)
 
-        # l_xx.shape = (pred_len+1, state_size, state_size)
-        l_xx = self.hessian_cost_fn_with_state(pred_xs[:-1],
+        l_xx = self.hessian_cost_state(pred_xs[:-1],
                                                g_x[:-1], terminal=False)
         terminal_l_xx = \
-            self.hessian_cost_fn_with_state(pred_xs[-1],
+            self.hessian_cost_state(pred_xs[-1],
                                             g_x[-1], terminal=True)
 
         l_xx = np.concatenate((l_xx, terminal_l_xx), axis=0)
 
         # l_uu.shape = (pred_len, input_size, input_size)
-        l_uu = self.hessian_cost_fn_with_input(pred_xs[:-1], sol)
+        l_uu = self.hessian_cost_input(pred_xs[:-1], sol)
 
         # l_ux.shape = (pred_len, input_size, state_size)
         l_ux = self.hessian_cost_fn_with_input_state(pred_xs[:-1], sol)
