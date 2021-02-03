@@ -5,15 +5,19 @@ from MPCBenchmark.models.gym_model import GymEnvModel as GEM
 from MPCBenchmark.agents.mppi import MPPI
 from MPCBenchmark.agents.cem import CEM
 from MPCBenchmark.agents.ilqr import ILQR
+from MPCBenchmark.envs.gym_pendulum_env import PendulumEnv as PENV
 import numpy as np
 import gym_cartpole_swingup
 
 
 #ENVIRONMENT = "CartPole-v0"
-#ENVIRONMENT = "Pendulum-v0"
+ENVIRONMENT = "Pendulum-v0"
 #ENVIRONMENT = "InvertedPendulum-v2"
-ENVIRONMENT = "CartPoleSwingUp-v0"
-env = GEW(ENVIRONMENT)
+#ENVIRONMENT = "CartPoleSwingUp-v0"
+#env = GEW(ENVIRONMENT)
+
+
+env = PENV()
 model = GEM(ENVIRONMENT)
 params_cem = {"K": 50, "T": 50, "max_iter": 1,
               "n_elite": 5, "epsilon": 1e-5, "alpha": 0, "instant_cost": (lambda x, u: 0), "std": 1}
@@ -30,10 +34,11 @@ mppi = MPPI(env.bounds_low, env.bounds_high, 4, 1, model, params_mppi)
 ilqr = ILQR(env.bounds_low, env.bounds_high, 4, 1, model, params_ilqr)
 
 
+env.reset()
 for i in range(1000):
-    action = ilqr.calc_action(env.state)
-    #_, r, done, _ = env.step(0)
-    # print(action, "with reward", r)
+    action = cem.calc_action(env.state)
+    _, r, done, _ = env.step(action)
+    # print(action, "with reward", r)_get_obs
     env.render()
     #if done:
         #env.reset()

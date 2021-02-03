@@ -31,8 +31,17 @@ class ILQR(Agent):
         self.state_cost = params["state_cost"]
         self.terminal_cost = params["terminal_cost"]
         self.input_cost = params["input_cost"]
-        self.gradient_cost_state = nd.core.Gradient(self.state_cost)
-        self.gradient_cost_input = nd.core.Gradient(self.input_cost)
+
+
+        def c(xu):
+            [x,u] = xu
+            return self.model._state_cost(x,u)
+        self.cost_grad = nd.Gradient(c)
+        self.hessian_cost = nd.Hessian(c)
+
+        self.gradient_cost_state = (lambda x,u: self.cost_grad([x,u])[0])
+        self.gradient_cost_input = (lambda x,u: self.cost_grad([x,u])[1])
+        self.gradient_cost_terminal = nd.Gradient(self.model._terminal_cost)
         self.hessian_cost_state = nd.core.Hessian(self.state_cost, self.state_cost)
         self.hessian_cost_input = nd.core.Hessian(self.input_cost, self.input_cost)
         self.hessian_cost_input_state = nd.core.Hessian(self.input_cost, self.state_cost)
@@ -66,8 +75,6 @@ class ILQR(Agent):
             f_x = None
             f_u = None
             l_x = None
-            l_xx = None
-            l_u = None
             l_uu = None
             l_ux = None
 
@@ -117,7 +124,6 @@ class ILQR(Agent):
 
         self.prev_sol[:-1] = solution[1:]
         self.prev_sol[-1] = solution[-1]  # last use the terminal input
-
         return solution[0]
 
     def forward_pass(self, current_x, optimal_solution, solution):
@@ -125,12 +131,12 @@ class ILQR(Agent):
         pred_len = solution.shape[0]
         # initialze
         x = current_x
-        xs = current_x[np.newaxis, :]
+        xs = current_x[np.newaxis, :] #Das ist kein python
 
         for t in range(pred_len):
             next_x = self.model.predict(x, solution[t])
             # update
-            xs = np.concatenate((xs, next_x[np.newaxis, :]), axis=0)
+            xs = np.concatenate((xs, next_x[np.newaxis, :]), axis=0) # das ist kein python
             x = next_x
 
         # check costs
@@ -145,52 +151,54 @@ class ILQR(Agent):
         return xs, cost, f_x, f_u, l_x, l_xx, l_u, l_uu, l_ux
 
     def _calc_gradient_hessian_cost(self, pred_xs, g_x, sol):
-        l_x = self.gradient_cost_state(pred_xs[:-1],
-                                               g_x[:-1], terminal=False)
-        terminal_l_x = \
-            self.gradient_cost_state(pred_xs[-1],
-                                             g_x[-1], terminal=True)
+        # l_x = self.gradient_cost_state(pred_xs[:-1],
+        #                                        g_x[:-1], terminal=False)
+        # terminal_l_x = \
+        #     self.gradient_cost_state(pred_xs[-1],
+        #                                      g_x[-1], terminal=True)
 
-        l_x = np.concatenate((l_x, terminal_l_x), axis=0)
+        # l_x = np.concatenate((l_x, terminal_l_x), axis=0)
 
-        l_u = self.gradient_cost_input(pred_xs[:-1], sol)
+        # l_u = self.gradient_cost_input(pred_xs[:-1], sol)
 
-        l_xx = self.hessian_cost_state(pred_xs[:-1],
-                                               g_x[:-1], terminal=False)
-        terminal_l_xx = \
-            self.hessian_cost_state(pred_xs[-1],
-                                            g_x[-1], terminal=True)
+        # l_xx = self.hessian_cost_state(pred_xs[:-1],
+        #                                        g_x[:-1], terminal=False)
+        # terminal_l_xx = \
+        #     self.hessian_cost_state(pred_xs[-1],
+        #                                     g_x[-1], terminal=True)
 
-        l_xx = np.concatenate((l_xx, terminal_l_xx), axis=0)
+        # l_xx = np.concatenate((l_xx, terminal_l_xx), axis=0)
 
-        # l_uu.shape = (pred_len, input_size, input_size)
-        l_uu = self.hessian_cost_input(pred_xs[:-1], sol)
+        # # l_uu.shape = (pred_len, input_size, input_size)
+        # l_uu = self.hessian_cost_input(pred_xs[:-1], sol)
 
-        # l_ux.shape = (pred_len, input_size, state_size)
-        l_ux = self.hessian_cost_input_state(pred_xs[:-1], sol)
-
+        # # l_ux.shape = (pred_len, input_size, state_size)
+        # l_ux = self.hessian_cost_input_state(pred_xs[:-1], sol)
+        l_x,l_u = self.cost_grad([pred_xs[:-1],sol])
         return l_x, l_xx, l_u, l_uu, l_ux
 
     def backward_pass(self, f_x, f_u, l_x, l_xx, l_u, l_uu, l_ux):
-        V_x = l_x[-1]
-        V_xx = l_xx[-1]
+        V_x_old = l_x[-1]
+        V_xx_old = l_xx[-1]
         k = np.zeros((self.output_size, self.output_size))
         K = np.zeros((self.output_size, self.input_size, self.input_size))
 
+        V_x = 0 # dummys
+        V_xx = 0 # dummys
         for t in range(self.output_size - 1, -1, -1):
             # get Q val
             Q_x, Q_u, Q_xx, Q_ux, Q_uu = self.q(f_x[t], f_u[t], l_x[t],
                                                 l_u[t], l_xx[t], l_ux[t],
-                                                l_uu[t], V_x, V_xx)
+                                                l_uu[t], V_x_old, V_xx_old)
             # calc gain
-            k[t] = - np.linalg.solve(Q_uu, Q_u)
-            K[t] = - np.linalg.solve(Q_uu, Q_ux)
+            k[t] = - np.linalg.solve(Q_uu, Q_u) # 10c
+            K[t] = - np.linalg.solve(Q_uu, Q_ux) # 10d
             # update V_x val
-            V_x = Q_x + np.dot(np.dot(K[t].T, Q_uu), k[t])
-            V_x += np.dot(K[t].T, Q_u) + np.dot(Q_ux.T, k[t])
+            V_x = Q_x + K[t].T @ Q_uu @ k[t] # 11b
+            V_x += K[t].T@ Q_u + Q_ux.T@ k[t] # 11b
             # update V_xx val
-            V_xx = Q_xx + np.dot(np.dot(K[t].T, Q_uu), K[t])
-            V_xx += np.dot(K[t].T, Q_ux) + np.dot(Q_ux.T, K[t])
+            V_xx = Q_xx + K[t].T@Q_uu@K[t] # 11c
+            V_xx += K[t].T@Q_ux + Q_ux.T@K[t]
             V_xx = 0.5 * (V_xx + V_xx.T)  # to maintain symmetry.
 
         return k, K
@@ -198,13 +206,15 @@ class ILQR(Agent):
     def q(self, f_x, f_u, l_x, l_u, l_xx, l_ux, l_uu, V_x, V_xx):
         size = len(l_x)
 
-        Q_x = l_x + np.dot(f_x.T, V_x)
-        Q_u = l_u + np.dot(f_u.T, V_x)
-        Q_xx = l_xx + np.dot(np.dot(f_x.T, V_xx), f_x)
+        Q_x = l_x + f_x.T@V_x # 5a
+        Q_u = l_u + f_u.T@V_x # 5b
+        Q_xx = l_xx + f_x.T@V_xx@f_x # 5c möglicherweise falsch
 
-        reg = self.mu * np.eye(size)
-        Q_ux = l_ux + np.dot(np.dot(f_u.T, (V_xx + reg)), f_x)
-        Q_uu = l_uu + np.dot(np.dot(f_u.T, (V_xx + reg)), f_u)
+        reg = self.mu * np.eye(size) #regularization term
+        Q_uu = l_uu + f_u.T@(V_xx + reg)@f_u # 10a möglicherweise falsch
+        Q_ux = l_ux + f_u.T@(V_xx + reg)@f_x # 10b möglicherweise falsch
+
+        #TODO wenns nicht geht + V_x @ f_
 
         return Q_x, Q_u, Q_xx, Q_ux, Q_uu
 

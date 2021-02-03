@@ -9,3 +9,16 @@ class Environment:
 
     def __str__(self) -> str:
         return "Name: " + self.name + "\n State: " + self.state
+
+    def step(self, action):
+        raise NotImplementedError
+
+    def render(self):
+        raise NotImplementedError
+
+    def _seed(self, seed):
+        raise NotImplementedError
+
+    def reset(self, seed=None):
+        raise NotImplementedError
+        

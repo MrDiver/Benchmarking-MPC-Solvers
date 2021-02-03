@@ -18,3 +18,17 @@ class Model:
 
     def get_observation(self):
         return self.last_observation
+
+    # used for linearization algorithms to have access to the dynamics
+
+    def _dynamics(self, x):
+        raise NotImplementedError
+
+    def _state_cost(self, x, u):
+        raise NotImplementedError
+
+    def _action_cost(self, u):
+        raise NotImplementedError
+
+    def _terminal_cost(self, x):
+        raise NotImplementedError
