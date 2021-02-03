@@ -4,6 +4,7 @@ from MPCBenchmark.envs.gym_wrapper import GymWrapperEnv as GEW
 from MPCBenchmark.models.gym_model import GymEnvModel as GEM
 from MPCBenchmark.agents.mppi import MPPI
 from MPCBenchmark.agents.cem import CEM
+from MPCBenchmark.agents.ilqr import ILQR
 import numpy as np
 import gym_cartpole_swingup
 
@@ -20,13 +21,17 @@ params_cem = {"K": 50, "T": 50, "max_iter": 1,
 params_mppi = {"K": 50, "T": 50, "std": 1,
                "terminal_cost": (lambda x: 0), "instant_cost": (lambda x, u: 0),
                "lam": 0.2}
+params_ilqr = {"max_iter": 1, "init_mu": 50, "mu_min": 0, "mu_max": 60, "init_delta": 0.1, "threshold": np.pi,
+               "terminal_cost": (lambda x: 0), "input_cost": (lambda x, u: 0),
+               "state_cost": (lambda x: 0)}
 
 cem = CEM(env.bounds_low, env.bounds_high, 4, 1, model, params_cem)
 mppi = MPPI(env.bounds_low, env.bounds_high, 4, 1, model, params_mppi)
+ilqr = ILQR(env.bounds_low, env.bounds_high, 4, 1, model, params_ilqr)
 
 
 for i in range(1000):
-    action = cem.calc_action(env.state)
+    action = ilqr.calc_action(env.state)
     #_, r, done, _ = env.step(0)
     # print(action, "with reward", r)
     env.render()

@@ -55,7 +55,7 @@ class ILQR(Agent):
         self.delta = self.init_delta
 
         # forward pass
-        alphas = 1 ** (1/(np.arange(10) ** 2))
+        alphas = 1 ** (1/(np.arange(1, 10) ** 2))
 
         for _ in range(self.max_iter):
             # forward pass
@@ -74,7 +74,7 @@ class ILQR(Agent):
             # derivatives
             if derivatives:
                 xs, cost, f_x, f_u, l_x, l_xx, l_u, l_uu, l_ux = \
-                    self.forward_pass(current_state, optimal_solution, solution)
+                    self.forward_pass(current_state, self.prev_sol, solution)
                 derivatives = False
 
             # backward pass
@@ -85,12 +85,7 @@ class ILQR(Agent):
                 new_xs, new_solution = \
                     self.calc_input_trajectory(k, K, xs, solution, alpha)
 
-                new_cost = calc_cost(new_xs[np.newaxis, :, :],
-                                     new_solution[np.newaxis, :, :],
-                                     optimal_solution[np.newaxis, :, :],
-                                     self.state_cost,
-                                     self.input_cost,
-                                     self.terminal_cost)
+                new_cost = - self.model.get_reward()
 
                 if new_cost < cost:
                     if np.abs((cost - new_cost) / cost) < self.threshold:
@@ -139,9 +134,7 @@ class ILQR(Agent):
             x = next_x
 
         # check costs
-        cost = calc_cost(current_x, solution[np.newaxis, :, :], optimal_solution, self.state_cost,
-                         self.input_cost,
-                         self.terminal_cost)
+        cost = - self.model.get_reward()
 
         f_x = nd.core.Gradient(xs[:-1])
         f_u = nd.core.Gradient(xs[:-1])
@@ -174,7 +167,7 @@ class ILQR(Agent):
         l_uu = self.hessian_cost_input(pred_xs[:-1], sol)
 
         # l_ux.shape = (pred_len, input_size, state_size)
-        l_ux = self.hessian_cost_fn_with_input_state(pred_xs[:-1], sol)
+        l_ux = self.hessian_cost_input_state(pred_xs[:-1], sol)
 
         return l_x, l_xx, l_u, l_uu, l_ux
 
