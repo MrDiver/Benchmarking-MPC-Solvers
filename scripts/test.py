@@ -25,7 +25,6 @@ params_mppi = {"K": 25, "T": 25, "std": 1,
 cem = CEM(env.bounds_low, env.bounds_high, 4, 1, model, params_cem)
 mppi = MPPI(env.bounds_low, env.bounds_high, 4, 1, model, params_mppi)
 
-
 for i in range(125):
     action = cem.calc_action(env.state)
     _, r, done, _ = env.step(action)

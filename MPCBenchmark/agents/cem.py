@@ -30,6 +30,9 @@ class CEM(Agent):
         self.mean = np.zeros((self.T, output_size))
         self.pool = mp.Pool(cores)
 
+        
+
+
     @staticmethod
     def f(model, state, sample):
         reward = 0
@@ -44,17 +47,17 @@ class CEM(Agent):
 
     def calc_action(self, x):
         std = self.std
-        def create_inputs(sample):
-            return (self.model, x, sample)
 
         for _ in range(self.max_iter):
             samples = np.random.normal(
                 self.mean, std, (self.K, self.T, self.output_size))
             samples = np.clip(samples, self.bounds_low, self.bounds_high)
-            
             inputs_ = [(self.model, x, sample) for sample in samples]
+            #print(inputs_)
+            
             rewards = np.array(self.pool.map(CEM.f_wrapper,inputs_))
             #rewards = np.array([self.f_wrapper(x) for x in inputs_])
+
             elites = samples[np.argsort(-rewards)][: self.n_elite]
 
             new_mean = np.mean(elites, axis=0)
