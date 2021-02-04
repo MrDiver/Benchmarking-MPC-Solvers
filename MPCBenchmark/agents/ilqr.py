@@ -146,17 +146,17 @@ class ILQR(Agent):
         f_u = nd.core.Gradient(xs[:-1])
 
         l_x, l_xx, l_u, l_uu, l_ux = \
-            self._calc_gradient_hessian_cost(xs)
+            self._calc_gradient_hessian_cost(xs, solution)
 
         return xs, cost, f_x, f_u, l_x, l_xx, l_u, l_uu, l_ux
 
-    def _calc_gradient_hessian_cost(self, pred_xs):
-        l_x = self.gradient_cost_state(pred_xs[:-1])
-        terminal_l_x = self.gradient_cost_state(pred_xs[-1])
+    def _calc_gradient_hessian_cost(self, pred_xs, solution):
+        l_x = self.gradient_cost_state(pred_xs[:-1], solution)
+        terminal_l_x = self.gradient_cost_state(pred_xs[-1], solution)
 
         l_x = np.concatenate((l_x, terminal_l_x), axis=0)
 
-        l_u = self.gradient_cost_input(pred_xs[:-1])
+        l_u = self.gradient_cost_input(pred_xs[:-1], solution)
 
         l_xx = self.hessian_cost_state(pred_xs[:-1])
         terminal_l_xx = self.hessian_cost_state(pred_xs[-1])
@@ -168,7 +168,7 @@ class ILQR(Agent):
 
         # # l_ux.shape = (pred_len, input_size, state_size)
         l_ux = self.hessian_cost_input_state(pred_xs[:-1])
-        l_x, l_u = self.cost_grad([pred_xs[:-1]])
+        # l_x, l_u = self.cost_grad([pred_xs[:-1]])
 
         return l_x, l_xx, l_u, l_uu, l_ux
 
