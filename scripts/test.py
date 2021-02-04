@@ -31,7 +31,7 @@ params_ilqr = {"max_iter": 1, "init_mu": 50, "mu_min": 0, "mu_max": 60, "init_de
 
 cem = CEM(env.bounds_low, env.bounds_high, 4, 1, model, params_cem)
 mppi = MPPI(env.bounds_low, env.bounds_high, 4, 1, model, params_mppi)
-ilqr = ILQR(env.bounds_low, env.bounds_high, 4, 1, model, params_ilqr)
+ilqr = ILQR(env.bounds_low, env.bounds_high, 2, 1, model, params_ilqr)
 
 
 env.reset()

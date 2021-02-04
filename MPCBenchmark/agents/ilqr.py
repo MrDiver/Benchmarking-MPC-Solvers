@@ -36,7 +36,7 @@ class ILQR(Agent):
             [x, u] = xu
             return self.model._state_cost(x, u)
 
-        self.cost_grad = nd.Gradient(c)
+        self.cost_grad = nd.Jacobian(c)
         self.hessian_cost = nd.Hessian(c)
 
         self.gradient_cost_state = (lambda x, u: self.cost_grad([x, u])[0])
@@ -50,6 +50,7 @@ class ILQR(Agent):
 
     def calc_action(self, state):
         self.prev_sol = np.zeros((self.output_size, self.input_size))
+        print(state)
         current_state = state
         # previous solution
         solution = self.prev_sol
@@ -151,6 +152,8 @@ class ILQR(Agent):
         return xs, cost, f_x, f_u, l_x, l_xx, l_u, l_uu, l_ux
 
     def _calc_gradient_hessian_cost(self, pred_xs, solution):
+        print(solution)
+        print(pred_xs)
         l_x = self.gradient_cost_state(pred_xs[:-1], solution)
         terminal_l_x = self.gradient_cost_state(pred_xs[-1], solution)
 
