@@ -36,7 +36,7 @@ ilqr = ILQR(env.bounds_low, env.bounds_high, 4, 1, model, params_ilqr)
 
 env.reset()
 for i in range(1000):
-    action = cem.calc_action(env.state)
+    action = ilqr.calc_action(env.state)
     _, r, done, _ = env.step(action)
     # print(action, "with reward", r)_get_obs
     env.render()
