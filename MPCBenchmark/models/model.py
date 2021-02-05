@@ -21,14 +21,14 @@ class Model:
 
     # used for linearization algorithms to have access to the dynamics
 
-    def _dynamics(self, x):
+    def _dynamics(self, x, u):
         raise NotImplementedError
 
-    def _state_cost(self, x, u):
+    def _transform(self, x, u):
         raise NotImplementedError
 
-    def _action_cost(self, u):
+    def _state_cost(self, z, g_z):
         raise NotImplementedError
 
-    def _terminal_cost(self, x):
+    def _terminal_cost(self, x, g_x):
         raise NotImplementedError

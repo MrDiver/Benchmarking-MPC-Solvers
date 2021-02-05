@@ -15,6 +15,8 @@ class PendulumModel(Model):
         self.g = g
         self.m = 1.
         self.l = 1.
+        self.W = np.diag([1.0,.1,.001])
+        self.W_t = np.diag([1.0,2.0,0.0])
         self.viewer = None
         self.last_u = None
 
@@ -87,18 +89,62 @@ class PendulumModel(Model):
             self.viewer = None
 
 
-    def _dynamics(self, x):
-        raise NotImplementedError
+    def predict(self, current_state: np.ndarray, action: np.ndarray, goal = None) -> np.ndarray:
+        current_state = current_state.reshape(1,-1)
+        action = action.reshape(1,-1)
+        print("cur",current_state.shape)
+        print("act",action.shape)
+        z = self._transform(current_state, action)
+        if goal is None:
+            goal = np.zeros(z.shape)
+        costs = self._state_cost(z, goal)
+        newstate = self._dynamics(current_state,action)
 
-    def _state_cost(self, x):
-        raise NotImplementedError
+        self.last_reward = -costs[0]
+        self.last_observation = newstate[0]
+        self.last_u = action[0]
+        return newstate
 
-    def _action_cost(self, u):
-        raise NotImplementedError
+    def batch_predict(self, current_state: np.ndarray, action: np.ndarray, goal = None) -> np.ndarray:
+        z = self._transform(current_state, action)
+        if goal is None:
+            goal = np.zeros(z.shape)
+        costs = self._state_cost(z, goal)
+        newstate = self._dynamics(current_state,action)
 
-    def _terminal_cost(self, x):
-        raise NotImplementedError
+        self.last_reward = -costs
+        self.last_observation = newstate
+        self.last_u = action
+        return newstate
 
+    def _dynamics(self, x, u):
+        g, m, l, dt = self.g, self.m, self.l, self.dt
+
+        u = np.clip(u, -self.max_torque, self.max_torque)[0]
+        th = x[:,[0]]
+        thdot = x[:,[1]]
+        newthdot = thdot + (-3 * g / (2 * l) * np.sin(th + np.pi) + 3. / (m * l ** 2) * u) * dt
+        newth = th + newthdot * dt
+        newthdot = np.clip(newthdot, -self.max_speed, self.max_speed)
+        return np.append(newth, newthdot, axis=1)
+
+
+    def _transform(self, x, u):
+        th = angle_normalize(x[:, [0]])
+        thdot = x[:, [1]]
+        z = np.append(np.append(th, thdot, axis=1), u, axis=1)
+        return z
+
+    def _state_cost(self, z, g_z):
+        _zd = z-g_z
+        #costs = [(z @ self.W) @ z.T for z in _zd]
+        costs = np.einsum("bi,ij,bj->b", _zd, self.W, _zd)
+        return costs
+
+    def _terminal_cost(self, x, g_x):
+        _zd = x-g_x
+        costs = np.einsum("bi,ij,bj->b", _zd, self.W_t, _zd)
+        return costs
 
 def angle_normalize(x):
     return ((x + np.pi) % (2 * np.pi)) - np.pi

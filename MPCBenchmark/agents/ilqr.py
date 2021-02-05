@@ -19,7 +19,7 @@ class ILQR(Agent):
         self.threshold = params["threshold"]
 
         # general parameters
-        # self.pred_len = config.PRED_LEN
+        self.pred_len = params["T"]
         # self.input_size = config.INPUT_SIZE
         # self.dt = config.DT
 
@@ -27,30 +27,34 @@ class ILQR(Agent):
         self.bounds_high = bounds_high
         self.bounds_low = bounds_low
 
-        # get cost func
-        self.state_cost = params["state_cost"]
-        self.terminal_cost = params["terminal_cost"]
-        self.input_cost = params["input_cost"]
+        
+# get cost func
+        def c(xugz):
+            x = xugz[:,:self.input_size]
+            u = xugz[:,self.input_size:(self.input_size+self.output_size)]
+            z = self.model._transform(x, u)
+            g_z = xugz[:,(self.input_size+self.output_size):]
+            return self.model._state_cost(z, g_z)
 
-        def c(xu):
-            [x, u] = xu
-            return self.model._state_cost(x, u)
+        def ct(xgz):
+            x = xgz[:,:self.input_size]
+            g_z = xgz[:,self.input_size:]
+            z = self.model._transform(x, np.zeros((x.shape[0],self.output_size)))
+            return self.model._terminal_cost(z, g_z)
 
-        self.cost_grad = nd.Jacobian(c)
-        self.hessian_cost = nd.Hessian(c)
+        self.Jacobian_cost = nd.Jacobian(c)
+        self.Jacobian_terminal_cost = nd.Jacobian(ct)
+        self.Hessian_cost = nd.Hessian(c)
+        self.Hessian_terminal_cost = nd.Hessian(ct)
 
-        self.gradient_cost_state = (lambda x, u: self.cost_grad([x, u])[0])
-        self.gradient_cost_input = (lambda x, u: self.cost_grad([x, u])[1])
-        self.gradient_cost_terminal = nd.core.Jacobian(self.model._terminal_cost)
-        self.hessian_cost_state = nd.core.Hessian(self.state_cost, self.state_cost)
-        self.hessian_cost_input = nd.core.Hessian(self.input_cost, self.input_cost)
-        self.hessian_cost_input_state = nd.core.Hessian(self.input_cost, self.state_cost)
 
-        self.prev_sol = np.zeros((self.output_size, self.input_size))
 
-    def calc_action(self, state):
-        self.prev_sol = np.zeros((self.output_size, self.input_size))
-        print(state)
+
+        self.prev_sol = np.zeros((self.pred_len,self.output_size))
+
+    def calc_action(self, state, optimal_solution=None):
+        self.prev_sol = np.zeros((self.pred_len,self.output_size))
+        print("state",state.shape)
         current_state = state
         # previous solution
         solution = self.prev_sol
@@ -82,7 +86,7 @@ class ILQR(Agent):
             # derivatives
             if derivatives:
                 xs, cost, f_x, f_u, l_x, l_xx, l_u, l_uu, l_ux = \
-                    self.forward_pass(current_state, solution)
+                    self.forward_pass(current_state, optimal_solution, solution)
                 derivatives = False
 
             # backward pass
@@ -127,18 +131,22 @@ class ILQR(Agent):
         self.prev_sol[-1] = solution[-1]  # last use the terminal input
         return solution[0]
 
-    def forward_pass(self, current_x, solution):
+    def forward_pass(self, current_x, optimal_solution, solution):
         # get size
-        pred_len = solution.shape[0]
         # initialze
         x = current_x
         xs = current_x[np.newaxis, :]  # Das ist kein python
 
-        for t in range(pred_len):
-            next_x = self.model.predict(x, solution[t])
-            # update
-            xs = np.concatenate((xs, next_x[np.newaxis, :]), axis=0)  # das ist kein python
-            x = next_x
+        def predict_trajectory(x,solution):
+            for t in range(self.pred_len):
+                print(x.shape)
+                print(solution[t].shape)
+                next_x = self.model.predict(x, solution[t])
+                print("next x",next_x.shape)
+                print("xs",xs.shape)
+                # update
+                xs = np.concatenate((xs, next_x), axis=0)  # das ist kein python
+                x = next_x
 
         # check costs
         cost = - self.model.get_reward()
@@ -147,31 +155,31 @@ class ILQR(Agent):
         f_u = nd.core.Gradient(xs[:-1])
 
         l_x, l_xx, l_u, l_uu, l_ux = \
-            self._calc_gradient_hessian_cost(xs, solution)
+            self._calc_gradient_hessian_cost(xs,optimal_solution, solution)
 
         return xs, cost, f_x, f_u, l_x, l_xx, l_u, l_uu, l_ux
 
-    def _calc_gradient_hessian_cost(self, pred_xs, solution):
-        print(solution)
-        print(pred_xs)
-        l_x = self.gradient_cost_state(pred_xs[:-1], solution)
-        terminal_l_x = self.gradient_cost_state(pred_xs[-1], solution)
+    def _calc_gradient_hessian_cost(self, pred_xs, goal_xs, solution):
 
-        l_x = np.concatenate((l_x, terminal_l_x), axis=0)
+        print("KOMMT HIER HIN WTF")
 
-        l_u = self.gradient_cost_input(pred_xs[:-1], solution)
+        print("CALC L STUFF BULLSHIT=====================")
+        print("predxs",pred_xs.shape)
+        print("solution",solution.shape)
+        print("repeat stuff",np.repeat(solution,pred_xs.shape[0],axis=0).shape)
 
-        l_xx = self.hessian_cost_state(pred_xs[:-1])
-        terminal_l_xx = self.hessian_cost_state(pred_xs[-1])
+        if goal_xs is None:
+            goal_xs = np.zeros((pred_xs.shape[0],pred_xs.shape[1]+solution.shape[0]))
 
-        l_xx = np.concatenate((l_xx, terminal_l_xx), axis=0)
+        print("goalxs",goal_xs.shape)
 
-        # # l_uu.shape = (pred_len, input_size, input_size)
-        l_uu = self.hessian_cost_input(pred_xs[:-1])
 
-        # # l_ux.shape = (pred_len, input_size, state_size)
-        l_ux = self.hessian_cost_input_state(pred_xs[:-1])
-        # l_x, l_u = self.cost_grad([pred_xs[:-1]])
+        xugz = np.append(np.append(pred_xs,solution.reshape(),axis=1), goal_xs, axis=1)
+        xgz = np.append(pred_xs,goal_xs, axis=1)
+        jac_c = self.Jacobian_cost(xugz)
+        jax_ct = self.Jacobian_terminal_cost(xgz)
+        hess_c = self.Hessian_cost(xugz)
+        hess_ct = self.Hessian_cost(xgz)
 
         return l_x, l_xx, l_u, l_uu, l_ux
 
@@ -219,9 +227,7 @@ class ILQR(Agent):
     def calc_input_trajectory(self, k, K, xs, solution, alpha):
         # get size
         (pred_len, input_size, state_size) = K.shape
-        # initialize
-        new_xs = np.zeros((pred_len + 1, state_size))
-        new_xs[0] = xs[0].copy()  # init state is same
+        # initializepred_len# init state is same
         new_solution = np.zeros((pred_len, input_size))
 
         for t in range(pred_len):

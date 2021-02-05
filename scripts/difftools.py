@@ -1,22 +1,16 @@
 import numpy as np
 import numdifftools as nd
+from MPCBenchmark.models.gym_pendulum_model import PendulumModel
 
-def f(xu):
-    x,u = xu
-    return 2 * x[:,[0]] + u + x[:,[1]]
+model = PendulumModel()
+
+xs = np.array([[np.pi, 0], [0,1]])
+us = np.array([[2], [2]])
 
 
-grad = nd.Gradient(f)
+z = model._transform(xs, us)
+print(z)
+cost = model._state_cost(z, np.zeros(z.shape))
+print("costs1",cost)
 
-xs = np.array([[1,2],[3,4]],dtype=np.float32)
-us = np.array([[1],[-1]],dtype=np.float32)
-
-print(f([xs,us]))
-
-erg = []
-for i in range(len(us)):
-    x = xs[i]
-    u = us[i]
-    erg.append(grad([x,u]))
-
-print(erg)
+print("d:",model._dynamics(xs,us))
