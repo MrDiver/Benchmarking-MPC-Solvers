@@ -94,14 +94,14 @@ class ILQR(Agent):
         f_u = jac[:,self.input_size:]
         return f_x, f_u
 
-    def derivatives(self, x, u, g_z):
+    def derivatives(self, x, us, g_z):
         xs = np.zeros((self.pred_length,self.input_size))
 
         #Simulation
 
         #Simulateend
 
-        xu = np.append(xs,u, axis=1)
+        xu = np.append(xs,us, axis=1)
         
 
         #for t in range(self.pred_length-1):
