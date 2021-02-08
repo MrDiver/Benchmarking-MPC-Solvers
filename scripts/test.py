@@ -36,7 +36,7 @@ params_ilqr = {"T": 50, "max_iter": 1, "init_mu": 50, "mu_min": 0, "mu_max": 60,
                "terminal_cost": (lambda x: 0), "input_cost": (lambda x, u: 0),
                "state_cost": (lambda x: 0)}
 
-params_ilqr2 = {"T":50}
+params_ilqr2 = {"T":20}
 cem = CEM(env.bounds_low, env.bounds_high, 2, 1, model, params_cem)
 mppi = MPPI(env.bounds_low, env.bounds_high, 2, 1, model, params_mppi)
 ilqr = ILQR(env.bounds_low, env.bounds_high, 2, 1, model, params_ilqr)

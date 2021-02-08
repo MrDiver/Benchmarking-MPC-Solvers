@@ -2,35 +2,45 @@ import numpy as np
 import numdifftools as nd
 
 from MPCBenchmark.agents.agent import Agent
-
+import multiprocessing as mp
 
 class ILQR(Agent):
-    def __init__(self, bounds_low, bounds_high, input_size, output_size, model, params) -> None:
+    def __init__(self, bounds_low, bounds_high, input_size, output_size, model, params, cores=12) -> None:
         super().__init__(bounds_low,bounds_high,input_size,output_size,model)
         self.pred_length = params["T"]
 
-        def c(xugz):
-            xugz = xugz[np.newaxis,:]
-            x = xugz[:,:self.input_size]
-            u = xugz[:,self.input_size:(self.input_size+self.output_size)]
+        def c(xu,g_z):
+            xu = xu[np.newaxis,:]
+            x = xu[:,:self.input_size]
+            u = xu[:,self.input_size:(self.input_size+self.output_size)]
             z = self.model._transform(x, u)
-            g_z = xugz[:,(self.input_size+self.output_size):]
+            #g_z = xugz[:,(self.input_size+self.output_size):]
             return self.model._state_cost(z, g_z)[0]
 
-        def ct(xgz):
-            xgz = xgz[np.newaxis,:]
-            x = xgz[:,:self.input_size]
-            g_z = xgz[:,self.input_size:]
+        def ct(x,g_z):
+            x = x[np.newaxis,:]
+            #x = x[:,:self.input_size]
+            #g_z = xgz[:,self.input_size:]
             z = self.model._transform(x, np.zeros((x.shape[0],self.output_size)))
             return self.model._terminal_cost(z, g_z)[0]
+        
+        def f(xu):
+            x = xu[np.newaxis,:self.input_size]
+            u = xu[np.newaxis,self.input_size:(self.input_size+self.output_size)]
+            return self.model._dynamics(x,u)[0]
 
         self.c = c
         self.ct = ct
+        self.f = f
+
         self.Jacobian_cost = nd.Jacobian(c)
         self.Jacobian_terminal_cost = nd.Jacobian(ct)
         self.Hessian_cost = nd.Hessian(c)
         self.Hessian_terminal_cost = nd.Hessian(ct)
+        self.Jacobian_dynamics = nd.Jacobian(f)
+        self.Hessian_dynamics = nd.Hessian(f)
     
+        self.pool = mp.Pool(cores)
         self.prev_sol = np.zeros((self.pred_length,self.output_size))
 
     def calc_action(self, state, g_z=None, goal_state=None):
@@ -46,10 +56,43 @@ class ILQR(Agent):
         elif len(np.array(g_z).shape) <= 1:
             raise AttributeError("g_z can't be 1-Dimensional")
         g_z = np.array(g_z)
-        self.derivatives(state,sol,g_z)
-
+        ls = self.derivatives(state,sol,g_z)
+        print(ls)
         return np.array([0])
 
+
+    def step_derive(self,xu_t,gz_t):
+        #xu_t = xu[t]
+        #x_t = xs[t]
+        #gz_t = g_z[t]
+        jac = self.Jacobian_cost(xu_t, gz_t) # doesnt work
+        #jac_t = self.Jacobian_terminal_cost(x_t, gz_t)
+        hess = self.Hessian_cost(xu_t, gz_t)
+        #hess_t = self.Hessian_terminal_cost(x_t, gz_t)
+
+        l_x = jac[:,:self.input_size]
+        l_u = jac[:,self.input_size:]
+        l_xx = np.array([hess[i,i] for i in range(self.input_size)]) # this code is horrible but i know it
+        l_uu = np.array([hess[i,i] for i in range(self.input_size,self.input_size + self.output_size)])
+        l_ux = np.array([hess[-1,i] for i in range(self.input_size)])
+        # print("jac",jac)
+        # #print("jac_t",jac_t)
+        # print("hess",hess)
+        # #print("hess_t",hess_t)
+
+        # print("l_x",l_x)
+        # print("l_u",l_u)
+        # print("l_xx",l_xx)
+        # print("l_uu",l_uu)
+        # print("l_ux",l_ux)
+        return l_x,l_u,l_xx,l_uu,l_ux
+
+    def step_derive_dynamics(self,xu_t):
+        jac = self.Jacobian_dynamics(xu_t)
+        #hess = self.Hessian_dynamics(xu_t) # doesnt work for some reason
+        f_x = jac[:,:self.input_size]
+        f_u = jac[:,self.input_size:]
+        return f_x, f_u
 
     def derivatives(self, x, u, g_z):
         xs = np.zeros((self.pred_length,self.input_size))
@@ -58,24 +101,42 @@ class ILQR(Agent):
 
         #Simulateend
 
-        z = self.model._transform(xs,u)
+        xu = np.append(xs,u, axis=1)
         
-        xugz = np.append(z,g_z,axis=1)
-        xgz = np.append(xs,g_z,axis=1)
-        print(xugz)
-        print(xgz)
 
-        print(self.c(xugz[0])) #works fine
-        print(self.ct(xgz[0])) #works fine
-        print(xugz[[0]]) #[[0. 0. 0. 1. 1. 0.]]
-        jac = self.Jacobian_cost(xugz[0]) # doesnt work
-        print("jac",jac)
-        input()
-        #jac_t = self.Jacobian_terminal_cost(xgz)
-        #hess = self.Hessian_cost(xugz)
-        #hess_t = self.Hessian_terminal_cost(xgz)
+        #for t in range(self.pred_length-1):
+        #_inputs = [(xu[t],g_z[t]) for t in range(self.pred_length-1)]
+        #print(_inputs)
 
-        return
+        #Calculate derivatives
+
+        l_xs = np.zeros((self.pred_length, self.input_size))
+        l_us = np.zeros((self.pred_length, self.output_size))
+        l_xxs = np.zeros((self.pred_length, self.input_size))
+        l_uus = np.zeros((self.pred_length, self.output_size))
+        l_uxs = np.zeros((self.pred_length, self.input_size))
+        f_xs = np.zeros((self.pred_length, self.input_size,self.input_size))
+        f_us = np.zeros((self.pred_length, self.input_size,self.output_size))
+
+        for t in range(self.pred_length):
+            l_x, l_u, l_xx, l_uu, l_ux = self.step_derive(xu[t],g_z[t])
+            f_x, f_u = self.step_derive_dynamics(xu[t])
+            l_xs[t,:] = l_x
+            l_us[t,:] = l_u
+            l_xxs[t,:] = l_xx
+            l_uus[t,:] = l_uu
+            l_uxs[t,:] = l_ux
+            f_xs[t,:] = f_x
+            f_us[t,:] = f_u
+
+        #calculate terminal cost derivatives
+        lx_T = self.Jacobian_terminal_cost(xs[-1],g_z[-1])[[0]]
+        lxx_T = self.Hessian_terminal_cost(xs[-1],g_z[-1])
+        lxx_T = np.array([[lxx_T[i,i] for i in range(self.input_size)]])
+        l_xs = np.append(l_xs, lx_T, axis=0)
+        l_xxs = np.append(l_xxs, lxx_T, axis=0)
+
+        return l_xs,l_us,l_xxs,l_uus,l_uxs,f_xs,f_us
 
     def backward_pass(self,l_x,l_u,l_xx,l_uu,l_ux,f_x,f_u,f_xx,f_uu,f_ux,V_x,V_xx,mu):
 
