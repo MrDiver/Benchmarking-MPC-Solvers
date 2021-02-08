@@ -10,17 +10,19 @@ class ILQR(Agent):
         self.pred_length = params["T"]
 
         def c(xugz):
+            xugz = xugz[np.newaxis,:]
             x = xugz[:,:self.input_size]
             u = xugz[:,self.input_size:(self.input_size+self.output_size)]
             z = self.model._transform(x, u)
             g_z = xugz[:,(self.input_size+self.output_size):]
-            return self.model._state_cost(z, g_z)
+            return self.model._state_cost(z, g_z)[0]
 
         def ct(xgz):
+            xgz = xgz[np.newaxis,:]
             x = xgz[:,:self.input_size]
             g_z = xgz[:,self.input_size:]
             z = self.model._transform(x, np.zeros((x.shape[0],self.output_size)))
-            return self.model._terminal_cost(z, g_z)
+            return self.model._terminal_cost(z, g_z)[0]
 
         self.c = c
         self.ct = ct
@@ -63,12 +65,12 @@ class ILQR(Agent):
         print(xugz)
         print(xgz)
 
-        print(self.c(xugz)) #works fine
-        print(self.ct(xgz)) #works fine
+        print(self.c(xugz[0])) #works fine
+        print(self.ct(xgz[0])) #works fine
         print(xugz[[0]]) #[[0. 0. 0. 1. 1. 0.]]
-        jac = self.Jacobian_cost(xugz) # doesnt work
-        print(jac)
-        
+        jac = self.Jacobian_cost(xugz[0]) # doesnt work
+        print("jac",jac)
+        input()
         #jac_t = self.Jacobian_terminal_cost(xgz)
         #hess = self.Hessian_cost(xugz)
         #hess_t = self.Hessian_terminal_cost(xgz)
