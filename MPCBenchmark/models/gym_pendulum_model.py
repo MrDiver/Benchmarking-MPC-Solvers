@@ -92,8 +92,8 @@ class PendulumModel(Model):
     def predict(self, current_state: np.ndarray, action: np.ndarray, goal = None) -> np.ndarray:
         current_state = current_state.reshape(1,-1)
         action = action.reshape(1,-1)
-        print("cur",current_state.shape)
-        print("act",action.shape)
+        #print("cur",current_state.shape)
+        #print("act",action.shape)
         z = self._transform(current_state, action)
         if goal is None:
             goal = np.zeros(z.shape)

@@ -57,7 +57,7 @@ class ILQR(Agent):
             raise AttributeError("g_z can't be 1-Dimensional")
         g_z = np.array(g_z)
         ls = self.derivatives(state,sol,g_z)
-        print(ls)
+        #print(ls)
         return np.array([0])
 
 
@@ -96,9 +96,13 @@ class ILQR(Agent):
 
     def derivatives(self, x, us, g_z):
         xs = np.zeros((self.pred_length,self.input_size))
-
+        xs[0,:] = x
         #Simulation
-
+        cost = 0
+        for i in range(1,self.pred_length):
+            newstate = self.model.predict(xs[i-1,:], us[i-1, :], goal=g_z[i-1, :])
+            cost -= self.model.get_reward()
+            xs[i, :] = newstate
         #Simulateend
 
         xu = np.append(xs,us, axis=1)
@@ -135,7 +139,7 @@ class ILQR(Agent):
         lxx_T = np.array([[lxx_T[i,i] for i in range(self.input_size)]])
         l_xs = np.append(l_xs, lx_T, axis=0)
         l_xxs = np.append(l_xxs, lxx_T, axis=0)
-
+        print(f_xs)
         return l_xs,l_us,l_xxs,l_uus,l_uxs,f_xs,f_us
 
     def backward_pass(self,l_x,l_u,l_xx,l_uu,l_ux,f_x,f_u,f_xx,f_uu,f_ux,V_x,V_xx,mu):
