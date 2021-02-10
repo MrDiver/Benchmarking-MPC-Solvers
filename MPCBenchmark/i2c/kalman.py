@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class kallman:
+class kalman:
 
     def __init__(self, A, E, C, y_t, mu_t, var_t) -> None:
         super().__init__()
