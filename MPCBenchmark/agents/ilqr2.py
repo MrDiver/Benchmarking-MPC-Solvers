@@ -43,6 +43,8 @@ class ILQR(Agent):
         self.pool = mp.Pool(cores)
         self.prev_sol = np.zeros((self.pred_length,self.output_size))
 
+        self.mu = 1
+
     def calc_action(self, state, g_z=None, goal_state=None):
         sol = self.prev_sol
         goal_state = np.array([goal_state])
@@ -56,7 +58,11 @@ class ILQR(Agent):
         elif len(np.array(g_z).shape) <= 1:
             raise AttributeError("g_z can't be 1-Dimensional")
         g_z = np.array(g_z)
-        ls = self.derivatives(state,sol,g_z)
+
+        #actual algorithm
+        l_x,l_u,l_xx,l_uu,l_ux,f_x,f_u = lfs = self.derivatives(state,sol,g_z)
+        self.backward_pass(l_x,l_u,l_xx,l_uu,l_ux,f_x,f_u)
+
         #print(ls)
         return np.array([0])
 
@@ -142,20 +148,55 @@ class ILQR(Agent):
         print(f_xs)
         return l_xs,l_us,l_xxs,l_uus,l_uxs,f_xs,f_us
 
-    def backward_pass(self,l_x,l_u,l_xx,l_uu,l_ux,f_x,f_u,f_xx,f_uu,f_ux,V_x,V_xx,mu):
 
+    def _Q(self,l_x,l_u,l_xx,l_uu,l_ux,f_x,f_u,V_x,V_xx):
 
+        print("l_x",l_x.shape)
+        print("l_u",l_u.shape)
+        print("l_xx",l_xx.shape)
+        print("l_uu",l_uu.shape)
+        print("l_ux",l_ux.shape)
+
+        print("f_x",f_x.shape)
+        print("f_u",f_u.shape)
+
+        print("V_x",V_x.shape)
+        print("V_xx",V_xx.shape)
         Q_x = l_x + f_x.T @ V_x
+        print("Q_x",Q_x)
         Q_u = l_u + f_u.T @ V_x
-        Q_xx = l_xx + f_x.T @ V_xx @ f_x + V_x@f_xx
+        print("Q_u",Q_u)
+        Q_xx = l_xx + f_x.T @ V_xx @ f_x #+ V_x@f_xx
 
-        Q_uu = l_uu + f_u.T @ (V_xx + mu @ np.eye(n)) @ f_u + V_x @ f_uu # 10a
-        Q_ux = l_ux + f_u.T @ (V_xx + mu @ np.eye(n)) @ f_x + V_x @ f_ux # 10b
+        Q_uu = l_uu + f_u.T @ (V_xx + self.mu @ np.eye(self.input_size)) @ f_u #+ V_x @ f_uu # 10a
+        Q_ux = l_ux + f_u.T @ (V_xx + self.mu @ np.eye(self.input_size)) @ f_x #+ V_x @ f_ux # 10b
+        
+        return Q_x, Q_u, Q_xx, Q_uu, Q_ux
 
-        k = -Q_uu**-1 @ Q_u # 10c
-        K = -Q_uu**-1 @ Q_ux # 10d
 
-        DeltaV = 1/2 * k.T @ Q_uu @ k @ Q_u # 11a
-        V_x    = Q_x + K.T @ Q_uu @ k + K.T @ Q_u + Q_ux.T @ k # 11b
-        V_xx  = Q_xx + K.T @ Q_uu @ K + K.T @ Q_ux + Q_ux.T @ K # 11c
+
+    def backward_pass(self,l_x,l_u,l_xx,l_uu,l_ux,f_x,f_u):
+        
+        V_x = l_x[-1]
+        V_xx = l_xx[-1]
+
+        ks = np.zeros((self.pred_length, self.output_size))
+        Ks = np.zeros((self.pred_length, self.output_size, self.input_size))
+
+        for t in range(self.pred_length-1, -1,-1):
+            Q_x, Q_u, Q_xx, Q_uu, Q_ux = self._Q(l_x[t],l_u[t],l_xx[t],l_uu[t],l_ux[t],f_x[t],f_u[t],V_x,V_xx)
+            ks[t] = k = -Q_uu**-1 @ Q_u # 10c
+            Ks[t] = K = -Q_uu**-1 @ Q_ux # 10d
+
+            #DeltaV = 1/2 * k.T @ Q_uu @ k @ Q_u # 11a
+            V_x    = Q_x + K.T @ Q_uu @ k + K.T @ Q_u + Q_ux.T @ k # 11b
+            V_xx  = Q_xx + K.T @ Q_uu @ K + K.T @ Q_ux + Q_ux.T @ K # 11c
+
+            V_xx = 0.5 * (V_xx + V_xx.T) 
+        
+        return ks,Ks
+        
+
+    
+
 
