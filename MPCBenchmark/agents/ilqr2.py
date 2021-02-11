@@ -150,7 +150,6 @@ class ILQR(Agent):
 
 
     def _Q(self,l_x,l_u,l_xx,l_uu,l_ux,f_x,f_u,V_x,V_xx):
-
         print("l_x",l_x.shape)
         print("l_u",l_u.shape)
         print("l_xx",l_xx.shape)
@@ -163,16 +162,16 @@ class ILQR(Agent):
         print("V_x",V_x.shape)
         print("V_xx",V_xx.shape)
         Q_x = l_x + f_x.T @ V_x
-        print("Q_x",Q_x)
+        print("Q_x",Q_x.shape)
         Q_u = l_u + f_u.T @ V_x
-        print("Q_u",Q_u)
+        print("Q_u",Q_u.shape)
         Q_xx = l_xx + f_x.T @ V_xx @ f_x #+ V_x@f_xx
-
-        Q_uu = l_uu + f_u.T @ (V_xx + self.mu @ np.eye(self.input_size)) @ f_u #+ V_x @ f_uu # 10a
-        Q_ux = l_ux + f_u.T @ (V_xx + self.mu @ np.eye(self.input_size)) @ f_x #+ V_x @ f_ux # 10b
+        print("Q_xx",Q_xx.shape)
+        #import pdb; pdb.set_trace()
+        Q_uu = l_uu + f_u.T @ (V_xx + self.mu * np.eye(self.input_size)) @ f_u #+ V_x @ f_uu # 10a
+        Q_ux = l_ux + f_u.T @ (V_xx + self.mu * np.eye(self.input_size)) @ f_x #+ V_x @ f_ux # 10b
         
         return Q_x, Q_u, Q_xx, Q_uu, Q_ux
-
 
 
     def backward_pass(self,l_x,l_u,l_xx,l_uu,l_ux,f_x,f_u):
@@ -184,7 +183,7 @@ class ILQR(Agent):
         Ks = np.zeros((self.pred_length, self.output_size, self.input_size))
 
         for t in range(self.pred_length-1, -1,-1):
-            Q_x, Q_u, Q_xx, Q_uu, Q_ux = self._Q(l_x[t],l_u[t],l_xx[t],l_uu[t],l_ux[t],f_x[t],f_u[t],V_x,V_xx)
+            Q_x, Q_u, Q_xx, Q_uu, Q_ux = self._Q(l_x[t],l_u[t],l_xx[None, t],l_uu[None, t],l_ux[None,t],f_x[t],f_u[t],V_x,V_xx)
             ks[t] = k = -Q_uu**-1 @ Q_u # 10c
             Ks[t] = K = -Q_uu**-1 @ Q_ux # 10d
 
