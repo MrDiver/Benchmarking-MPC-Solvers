@@ -30,15 +30,15 @@ class ILQR(Agent):
         
 # get cost func
         def c(xugz):
-            x = xugz[:,:self.input_size]
-            u = xugz[:,self.input_size:(self.input_size+self.output_size)]
+            x = xugz[:,:self.state_size]
+            u = xugz[:,self.state_size:(self.state_size+self.output_size)]
             z = self.model._transform(x, u)
-            g_z = xugz[:,(self.input_size+self.output_size):]
+            g_z = xugz[:,(self.state_size+self.output_size):]
             return self.model._state_cost(z, g_z)
 
         def ct(xgz):
-            x = xgz[:,:self.input_size]
-            g_z = xgz[:,self.input_size:]
+            x = xgz[:,:self.state_size]
+            g_z = xgz[:,self.state_size:]
             z = self.model._transform(x, np.zeros((x.shape[0],self.output_size)))
             return self.model._terminal_cost(z, g_z)
 
@@ -187,7 +187,7 @@ class ILQR(Agent):
         V_x_old = l_x[-1]
         V_xx_old = l_xx[-1]
         k = np.zeros((self.output_size, self.output_size))
-        K = np.zeros((self.output_size, self.input_size, self.input_size))
+        K = np.zeros((self.output_size, self.state_size, self.state_size))
 
         V_x = 0  # dummys
         V_xx = 0  # dummys
