@@ -3,10 +3,13 @@ import numdifftools as nd
 
 from MPCBenchmark.agents.agent import Agent
 import multiprocessing as mp
+import matplotlib.pyplot as plt
+import os
 
 class ILQR(Agent):
     def __init__(self, bounds_low, bounds_high, input_size, output_size, model, params, cores=12) -> None:
         super().__init__(bounds_low,bounds_high,input_size,output_size,model)
+        self.name = "ILQR"
         self.pred_length = params["T"]
         self.max_iter = params["max_iter"]
         self.threshold = params["threshold"]
@@ -43,24 +46,23 @@ class ILQR(Agent):
         self.Hessian_dynamics = nd.Hessian(f)
     
         self.pool = mp.Pool(cores)
-        self.prev_sol = np.zeros((self.pred_length,self.output_size))
-
+        self.prev_sol = np.random.normal(0,0.1,(self.pred_length,self.output_size))
         self.init_mu = 1
         self.mu_min = 1e-6
         self.delta_zero = 2
         self.init_delta = self.delta_zero
         self.alphas = 1.1**(-np.arange(10)**2)
+        self.save_plots = False
 
     def calc_action(self, state, g_z=None, goal_state=None):
         self.mu = self.init_mu
         self.delta = self.init_delta
-        sol = self.prev_sol
+        sol = self.prev_sol.copy()
         goal_state = np.array([goal_state])
         converged_sol = False
         accepted_solution = False
-
-        print("Goal State",goal_state)
-        print("PredLength",self.pred_length)
+        
+        #print("Goal State",goal_state),action,)
         if g_z is None:
             if goal_state is None:
                 raise AttributeError("goal_state can't be null if no target trajectory g_z is given!")
@@ -72,10 +74,10 @@ class ILQR(Agent):
         #actual algorithm
 
         for iter in range(self.max_iter):
-            print("Iteration",iter)
+            #print("Iteration",iter)
             xs, cost = self.simulate_trajectory(state,sol,g_z)
-            print("Cost:",cost)
-            print("Mu:",self.mu)
+            #print("Cost:",cost)
+            #print("Mu:",self.mu)
             l_x,l_u,l_xx,l_uu,l_ux,f_x,f_u = lfs = self.derivatives(xs[:-1],sol,g_z)
             k, K = self.backward_pass(l_x,l_u,l_xx,l_uu,l_ux,f_x,f_u)
             #check if backward pass failed
@@ -86,20 +88,52 @@ class ILQR(Agent):
             #end check
 
             # begin line search   
+            alpha_iteration=0
+            sol = np.clip(sol,self.bounds_low,self.bounds_high)
+            test_solution = sol.copy()
+            test_states = xs.copy()
+            test_cost = cost
             for alpha in self.alphas:
-                print("Alpha:",alpha)
-                new_xs, new_us, new_cost = self.forward_pass(alpha,k,K,xs,sol)
+                #print("Alpha:",alpha)
+
+                new_xs, new_us, new_cost = self.forward_pass(alpha,k,K,test_states,test_solution)
+                new_us = np.clip(new_us,self.bounds_low,self.bounds_high)
+                #Exhaustive plotting
+                if self.save_plots:
+                    fig = plt.figure(figsize=(16,10))
+                    ax = fig.subplots(nrows=self.state_size+self.output_size)
+                    ax[0].set_title("Timestep:"+str(self.step_iteration_variable)+"  Iteration:"+str(iter)+"  Mu:"+str(self.mu)+" Alpha:"+str(alpha))   
+                    for i in range(self.state_size):
+                        ax[i].plot(test_states[:,i],alpha=0.4,label="org_xs_"+str(i))
+                        ax[i].plot(xs[:,i],label="x_"+str(i))
+                        ax[i].plot(new_xs[:,i],label="x_hat_forward"+str(i),linestyle="--")
+                        ax[i].legend(loc="upper left")
+                    
+                    ax[1].set_title("Old Cost: "+str(cost)+ " Cost_Hat: "+str(new_cost))
+                    for i in range(self.state_size,self.state_size+self.output_size):
+                        i_ = i-self.state_size
+                        ax[i].plot(test_solution,alpha=0.4,label="org_u")
+                        ax[i].plot(sol[:,i_], label="u_"+str(i_))
+                        ax[i].plot(new_us[:,i_],label="u_hat_forward_"+str(i_),linestyle="--")
+                        ax[i].set_ylim(self.bounds_low*1.1,self.bounds_high*1.1)
+                        ax[i].legend(loc="upper left")
+                    if not os.path.exists("ilqrsaves"):
+                        os.mkdir("ilqrsaves")
+                    fig.savefig("ilqrsaves/step_"+str(self.step_iteration_variable)+"_iter_"+str(iter)+"_alpha_"+str(alpha_iteration)+"_state_action")
+                    plt.close(fig)
+                    alpha_iteration+=1
                 # check if forward pass has diverged
                 if new_cost < cost:
                     # check of 13
+                    #print("COST THINGY",np.abs((cost - new_cost) / cost))
                     if np.abs((cost - new_cost) / cost) < self.threshold:
                         converged_sol = True
                         print("Solution Converged")
                         break
 
                     cost = new_cost
-                    xs = new_xs
-                    sol = new_us
+                    xs = new_xs.copy()
+                    sol = new_us.copy()
 
                      # decrease mu for next iteration
                     self.delta = min(1/self.delta_zero,self.delta/self.delta_zero)
@@ -114,13 +148,15 @@ class ILQR(Agent):
             if converged_sol:
                 break
 
-        self.prev_sol[:-1] = sol[1:]
+        self.log_iteration(xs,sol)
+        self.prev_sol = np.roll(sol,-1)
         self.prev_sol[-1] = sol[-1]
 
+        self.prev_sol = np.clip(self.prev_sol,self.bounds_low,self.bounds_high)
         #print(ls)
         return sol[0]
 
-
+    # TODO: Needs some refactoring
     #return with terminal state (pred_len+1,state_size)
     def simulate_trajectory(self,x,us,g_z):
         xs = np.zeros((self.pred_length+1,self.state_size))
@@ -129,10 +165,10 @@ class ILQR(Agent):
         cost = 0
         for i in range(1,self.pred_length+1):
             newstate = self.model.predict(xs[i-1,:], us[i-1, :], goal=g_z[i-1, :])
-            cost -= self.model.get_reward()
+            cost += self.model.get_reward()
             xs[i, :] = newstate
         #Simulateend
-        return xs, cost
+        return xs, -cost
 
 
     ############################################################################
@@ -267,10 +303,11 @@ class ILQR(Agent):
     ############################################################################
     def forward_pass(self,alpha,k,K,xs,us):
         x_hat, u_hat = np.zeros_like(xs), np.zeros_like(us)
-        x_hat[0] = xs[0]
+        x_hat[0] = xs[0].copy()
         c_hat = 0
         for i in range(self.pred_length):
             u_hat[i] = us[i] + alpha*k[i] + K[i]@(x_hat[i]-xs[i]) # 12
+            u_hat = np.clip(u_hat,self.bounds_low,self.bounds_high)
             x_hat[i+1] = self.model.predict(x_hat[i],u_hat[i])
             c_hat -= self.model.last_reward
         

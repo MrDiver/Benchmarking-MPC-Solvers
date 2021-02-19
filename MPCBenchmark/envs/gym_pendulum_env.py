@@ -2,6 +2,7 @@ import gym
 from gym import spaces
 from gym.utils import seeding
 import numpy as np
+import pandas as pd
 from os import path
 from MPCBenchmark.envs.env import Environment
 
@@ -25,6 +26,8 @@ class PendulumEnv(Environment):
         self.bounds_low = -self.max_torque
         self.bounds_high = self.max_torque
 
+
+        self.history = pd.DataFrame()#pd.DataFrame([[[], 0, 0]], columns=["state", "action", "cost"])
         self.seed()
 
     def seed(self, seed=None):
@@ -48,12 +51,21 @@ class PendulumEnv(Environment):
         newthdot = np.clip(newthdot, -self.max_speed, self.max_speed)
 
         self.state = np.array([newth, newthdot])
+
+
+        self.history = self.history.append(
+            {"state": self.state, "action": u, "cost": costs}, ignore_index=True)
         return self._get_obs(), -costs, False, {}
 
-    def reset(self):
+    def reset(self,state=None):
         high = np.array([np.pi, 1])
         self.state = self.np_random.uniform(low=-high, high=high)
+        if state is not None:
+            self.state = state.copy()
         self.last_u = None
+        self.history = pd.DataFrame()
+        self.history = self.history.append(
+            {"state": self.state, "action": 0, "cost": 0}, ignore_index=True)
         return self._get_obs()
 
     def _get_obs(self):

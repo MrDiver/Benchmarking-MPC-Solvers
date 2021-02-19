@@ -15,9 +15,10 @@ class CEM(Agent):
 
     def __init__(self, bounds_low, bounds_high, input_size, output_size, model, params: dict) -> None:
         super().__init__(bounds_low, bounds_high, input_size, output_size, model)
+        self.name="CEM"
         self.K = params["K"]
-        self.T = params["T"]
-        self.U = np.zeros((self.T, self.output_size), dtype=np.float64)
+        self.pred_length = params["T"]
+        self.U = np.zeros((self.pred_length, self.output_size), dtype=np.float64)
         self.max_iter = params["max_iter"]
         #self.K = params["n_samples"]
         self.n_elite = params["n_elite"]
@@ -25,8 +26,8 @@ class CEM(Agent):
         self.alpha = params["alpha"]
         self.instant_cost = params["instant_cost"]
         # Distribution over output parameters
-        self.std = np.ones((self.T, output_size))*params["std"]
-        self.mean = np.zeros((self.T, output_size))
+        self.std = np.ones((self.pred_length, output_size))*params["std"]
+        self.mean = np.zeros((self.pred_length, output_size))
         self.pool = mp.Pool(12)
 
         def f(state, sample):
@@ -37,11 +38,21 @@ class CEM(Agent):
             return reward
         self.f = f
 
-    def calc_action(self, x):
-        std = self.std
+    def calc_action(self, x, g_z=None, goal_state=None):
+        goal_state = np.array([goal_state])
+        if g_z is None:
+            if goal_state is None:
+                raise AttributeError("goal_state can't be null if no target trajectory g_z is given!")
+            g_z = np.repeat(goal_state, self.pred_length,axis=0)
+        elif len(np.array(g_z).shape) <= 1:
+            raise AttributeError("g_z can't be 1-Dimensional")
+        g_z = np.array(g_z)
+
+        #algorithm
+        std = self.std.copy()
         for _ in range(self.max_iter):
             samples = np.random.normal(
-                self.mean, std, (self.K, self.T, self.output_size))
+                self.mean, std, (self.K, self.pred_length, self.output_size))
             samples = np.clip(samples, self.bounds_low, self.bounds_high)
             rewards = np.array([self.f(x, sample) for sample in samples])
             elites = samples[np.argsort(-rewards)][: self.n_elite]
@@ -57,4 +68,20 @@ class CEM(Agent):
             if (std < self.epsilon).all():
                 break
 
+
+        xs,_ = self.simulate_trajectory(x,self.U,g_z)
+        self.log_iteration(xs, self.mean)
         return np.clip(u0, self.bounds_low, self.bounds_high)
+
+    # TODO: Needs some refactoring
+    def simulate_trajectory(self,x,us,g_z):
+        xs = np.zeros((self.pred_length+1,self.state_size))
+        xs[0,:] = x
+        #Simulation
+        cost = 0
+        for i in range(1,self.pred_length+1):
+            newstate = self.model.predict(xs[i-1,:], us[i-1, :], goal=g_z[i-1, :])
+            cost += self.model.get_reward()
+            xs[i, :] = newstate
+        #Simulateend
+        return xs, -cost
