@@ -14,6 +14,10 @@ class GymEnvModel(Model):
     def predict(self, current_state: np.ndarray, action: np.ndarray) -> np.ndarray:
         # if(np.clip(action, self.bounds_low, self.bounds_high) != action):
         #    print("RuntimeWarning: Actions out of action space for this model")
+
+        if len(current_state.shape)>1:
+            action = action[0]
+            current_state = current_state[0]
         self.env.reset()
         self.env.env.state = current_state
         obs, r, done, _ = self.env.step(action)
