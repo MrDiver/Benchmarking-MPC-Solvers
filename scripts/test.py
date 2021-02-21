@@ -2,7 +2,6 @@
 from MPCBenchmark.envs.gym_wrapper import GymWrapperEnv as GEW
 # from MPCBenchmark.envs.mujym_wrapper import MujymWrapperEnv as MEW
 from MPCBenchmark.models.gym_model import GymEnvModel as GEM
-
 from MPCBenchmark.agents.cem import CEM
 from MPCBenchmark.agents.mppi import MPPI
 from MPCBenchmark.agents.ilqr import ILQR

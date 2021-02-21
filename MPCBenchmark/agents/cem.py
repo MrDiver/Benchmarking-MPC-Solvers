@@ -1,7 +1,8 @@
 from MPCBenchmark.agents.agent import Agent
 from MPCBenchmark.models.model import Model
-import multiprocessing as mp
 import numpy as np
+from gym.utils import EzPickle
+import multiprocessing as mp
 
 
 class CEM(Agent):
@@ -13,7 +14,7 @@ class CEM(Agent):
     alpha: how much of the old mean and variance is used to compute a new mean and variance
     """
 
-    def __init__(self, bounds_low, bounds_high, input_size, output_size, model, params: dict) -> None:
+    def __init__(self, bounds_low, bounds_high, input_size, output_size, model, params: dict, cores = 8) -> None:
         super().__init__(bounds_low, bounds_high, input_size, output_size, model)
         self.name="CEM"
         self.K = params["K"]
@@ -28,15 +29,19 @@ class CEM(Agent):
         # Distribution over output parameters
         self.std = np.ones((self.pred_length, output_size))*params["std"]
         self.mean = np.zeros((self.pred_length, output_size))
-        self.pool = mp.Pool(12)
+        self.pool = mp.Pool(cores)
 
-        def f(state, sample):
-            reward = 0
-            for at in sample:
-                state = self.model.predict(state, at)
-                reward += self.model.get_reward()
-            return reward
-        self.f = f
+    @staticmethod
+    def f(model, state, sample):
+        reward = 0
+        for at in sample:
+            state = model.predict(state, at)
+            reward += model.get_reward()
+        return reward
+
+    @staticmethod
+    def f_wrapper(x):
+        return CEM.f(*x)
 
     def calc_action(self, x, g_z=None, goal_state=None):
         goal_state = np.array([goal_state])
@@ -54,7 +59,12 @@ class CEM(Agent):
             samples = np.random.normal(
                 self.mean, std, (self.K, self.pred_length, self.output_size))
             samples = np.clip(samples, self.bounds_low, self.bounds_high)
-            rewards = np.array([self.f(x, sample) for sample in samples])
+            inputs_ = [(self.model, x, sample) for sample in samples]
+            #print(inputs_)
+            
+            rewards = np.array(self.pool.map(CEM.f_wrapper,inputs_))
+            #rewards = np.array([self.f_wrapper(x) for x in inputs_])
+
             elites = samples[np.argsort(-rewards)][: self.n_elite]
 
             new_mean = np.mean(elites, axis=0)
