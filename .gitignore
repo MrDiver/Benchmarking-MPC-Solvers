@@ -3,3 +3,6 @@ MUJOCO_LOG.TXT
 .vscode
 MPCBenchmark.egg-info
 venv
+.idea
+experiments
+Media
