@@ -34,8 +34,8 @@ class CEM(Agent):
     @staticmethod
     def f(model, state, sample):
         reward = 0
-        for at in sample:
-            state = model.predict(state, at)
+        for u_t in sample:
+            state = model.predict(state, u_t)
             reward += model.get_reward()
         return reward
 
