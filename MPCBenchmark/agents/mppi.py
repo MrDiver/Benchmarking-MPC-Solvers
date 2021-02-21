@@ -20,6 +20,19 @@ class MPPI(Agent):
             0, self.std, (self.K, self.pred_length, self.output_size))
         self.S = np.zeros(self.K)
 
+
+    @staticmethod
+    def f(model, state, sample, g_z):
+        reward = 0
+        for at in sample:
+            state = model.predict(state, at)
+            reward += model.get_reward()
+        return reward
+
+    @staticmethod
+    def f_wrapper(x):
+        return MPPI.f(*x)
+
     def calc_action(self, state, g_z=None, goal_state=None):
         goal_state = np.array([goal_state])
         if g_z is None:
