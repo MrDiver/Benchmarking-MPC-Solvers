@@ -50,11 +50,10 @@ class PendulumEnv(Environment):
         newth = th + newthdot * dt
         newthdot = np.clip(newthdot, -self.max_speed, self.max_speed)
 
-        self.state = np.array([newth, newthdot])
-
-
         self.history = self.history.append(
             {"state": self.state, "action": u, "cost": costs}, ignore_index=True)
+
+        self.state = np.array([newth, newthdot])
         return self._get_obs(), -costs, False, {}
 
     def reset(self,state=None):
@@ -64,8 +63,8 @@ class PendulumEnv(Environment):
             self.state = state.copy()
         self.last_u = None
         self.history = pd.DataFrame()
-        self.history = self.history.append(
-            {"state": self.state, "action": 0, "cost": 0}, ignore_index=True)
+        #self.history = self.history.append(
+            #{"state": self.state, "action": 0, "cost": 0}, ignore_index=True)
         return self._get_obs()
 
     def _get_obs(self):

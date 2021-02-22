@@ -2,238 +2,281 @@ import numpy as np
 import numdifftools as nd
 
 from MPCBenchmark.agents.agent import Agent
-
+import multiprocessing as mp
+import matplotlib.pyplot as plt
+import os
 
 class ILQR(Agent):
-
-    def __init__(self, bounds_low, bounds_high, input_size, output_size, model, params: dict) -> None:
-        super().__init__(bounds_low, bounds_high, input_size, output_size, model)
-
+    def __init__(self, model, params, cores=12) -> None:
+        super().__init__("ILQR", model)
+        self.horizon_length = params["T"]
         self.max_iter = params["max_iter"]
-        self.init_mu = params["init_mu"]
-        self.mu = self.init_mu
-        self.min_mu = params["mu_min"]
-        self.max_mu = params["mu_max"]
-        self.init_delta = params["init_delta"]
-        self.delta = self.init_delta
         self.threshold = params["threshold"]
 
-        # general parameters
-        self.pred_len = params["T"]
-        # self.input_size = config.INPUT_SIZE
-        # self.dt = config.DT
-
-        self.delta = self.init_delta
-        self.bounds_high = bounds_high
-        self.bounds_low = bounds_low
-
-        
-# get cost func
-        def c(xugz):
-            x = xugz[:,:self.state_size]
-            u = xugz[:,self.state_size:(self.state_size+self.output_size)]
+        def c(xu,g_z):
+            xu = xu[np.newaxis,:]
+            x = xu[:,:self.state_size]
+            u = xu[:,self.state_size:(self.state_size+self.action_size)]
             z = self.model._transform(x, u)
-            g_z = xugz[:,(self.state_size+self.output_size):]
-            return self.model._state_cost(z, g_z)
+            #g_z = xugz[:,(self.input_size+self.output_size):]
+            return self.model._state_cost(z, g_z)[0]
 
-        def ct(xgz):
-            x = xgz[:,:self.state_size]
-            g_z = xgz[:,self.state_size:]
-            z = self.model._transform(x, np.zeros((x.shape[0],self.output_size)))
-            return self.model._terminal_cost(z, g_z)
+        def ct(x,g_z):
+            x = x[np.newaxis,:]
+            #x = x[:,:self.input_size]
+            #g_z = xgz[:,self.input_size:]
+            z = self.model._transform(x, np.zeros((x.shape[0],self.action_size)))
+            return self.model._terminal_cost(z, g_z)[0]
+        
+        def f(xu):
+            x = xu[np.newaxis,:self.state_size]
+            u = xu[np.newaxis,self.state_size:(self.state_size+self.action_size)]
+            return self.model._dynamics(x,u)[0]
+
+        self.c = c
+        self.ct = ct
+        self.f = f
 
         self.Jacobian_cost = nd.Jacobian(c)
         self.Jacobian_terminal_cost = nd.Jacobian(ct)
         self.Hessian_cost = nd.Hessian(c)
         self.Hessian_terminal_cost = nd.Hessian(ct)
+        self.Jacobian_dynamics = nd.Jacobian(f)
+        self.Hessian_dynamics = nd.Hessian(f)
+    
+        self.pool = mp.Pool(cores)
+        self.planned_us = np.random.normal(0,0.1,(self.horizon_length,self.action_size))
+        self.init_mu = 1
+        self.mu_min = 1e-6
+        self.delta_zero = 2
+        self.init_delta = self.delta_zero
+        self.alphas = 1.1**(-np.arange(10)**2)
+        self.save_plots = False
 
-
-
-
-        self.prev_sol = np.zeros((self.pred_len,self.output_size))
-
-    def calc_action(self, state, optimal_solution=None):
-        self.prev_sol = np.zeros((self.pred_len,self.output_size))
-        print("state",state.shape)
-        current_state = state
-        # previous solution
-        solution = self.prev_sol
-
-        # converged solution
-        converged = False
-
-        # derivatives
-        derivatives = True
+    def _calc_action(self, x, g_z):
 
         self.mu = self.init_mu
         self.delta = self.init_delta
+        us = self.planned_us.copy()
+        converged_sol = False
+        accepted_solution = False
+        
+        for iter in range(self.max_iter):
+            #print("Iteration",iter)
+            xs, cost = self.simulate_trajectory(x,us,g_z)
+            #print("Cost:",cost)
+            #print("Mu:",self.mu)
+            l_x,l_u,l_xx,l_uu,l_ux,f_x,f_u = lfs = self.derivatives(xs[:-1],us,g_z)
+            k, K = self.backward_pass(l_x,l_u,l_xx,l_uu,l_ux,f_x,f_u)
+            #check if backward pass failed
+            if False:
+                self.delta = max(self.delta_zero,self.delta*self.delta_zero)
+                self.mu = max(self.mu_min,self.mu*self.delta)
+                continue
+            #end check
 
-        # forward pass
-        alphas = 1 ** (1 / (np.arange(1, 10) ** 2))
+            # begin line search   
+            alpha_iteration=0
+            us = np.clip(us,self.bounds_low,self.bounds_high)
+            test_solution = us.copy()
+            test_states = xs.copy()
+            test_cost = cost
+            for alpha in self.alphas:
+                #print("Alpha:",alpha)
 
-        for _ in range(self.max_iter):
-            # forward pass
-            accepted = False
-
-            xs = None
-            cost = None
-            f_x = None
-            f_u = None
-            l_x = None
-            l_uu = None
-            l_ux = None
-
-            # derivatives
-            if derivatives:
-                xs, cost, f_x, f_u, l_x, l_xx, l_u, l_uu, l_ux = \
-                    self.forward_pass(current_state, optimal_solution, solution)
-                derivatives = False
-
-            # backward pass
-            k, K = self.backward_pass(f_x, f_u, l_x, l_xx, l_u, l_uu, l_ux)
-
-            # forward pass
-            for alpha in alphas:
-                new_xs, new_solution = \
-                    self.calc_input_trajectory(k, K, xs, solution, alpha)
-
-                new_cost = - self.model.get_reward()
-
+                new_xs, new_us, new_cost = self.forward_pass(alpha,k,K,test_states,test_solution)
+                new_us = np.clip(new_us,self.bounds_low,self.bounds_high)
+                #Exhaustive plotting
+                if self.save_plots:
+                    fig = plt.figure(figsize=(16,10))
+                    ax = fig.subplots(nrows=self.state_size+self.action_size)
+                    ax[0].set_title("Timestep:"+str(self.step_iteration_variable)+"  Iteration:"+str(iter)+"  Mu:"+str(self.mu)+" Alpha:"+str(alpha))   
+                    for i in range(self.state_size):
+                        ax[i].plot(test_states[:,i],alpha=0.4,label="org_xs_"+str(i))
+                        ax[i].plot(xs[:,i],label="x_"+str(i))
+                        ax[i].plot(new_xs[:,i],label="x_hat_forward"+str(i),linestyle="--")
+                        ax[i].legend(loc="upper left")
+                    
+                    ax[1].set_title("Old Cost: "+str(cost)+ " Cost_Hat: "+str(new_cost))
+                    for i in range(self.state_size,self.state_size+self.action_size):
+                        i_ = i-self.state_size
+                        ax[i].plot(test_solution,alpha=0.4,label="org_u")
+                        ax[i].plot(us[:,i_], label="u_"+str(i_))
+                        ax[i].plot(new_us[:,i_],label="u_hat_forward_"+str(i_),linestyle="--")
+                        ax[i].set_ylim(self.bounds_low*1.1,self.bounds_high*1.1)
+                        ax[i].legend(loc="upper left")
+                    if not os.path.exists("ilqrsaves"):
+                        os.mkdir("ilqrsaves")
+                    fig.savefig("ilqrsaves/step_"+str(self.step_iteration_variable)+"_iter_"+str(iter)+"_alpha_"+str(alpha_iteration)+"_state_action")
+                    plt.close(fig)
+                    alpha_iteration+=1
+                # check if forward pass has diverged
                 if new_cost < cost:
+                    # check of 13
+                    #print("COST THINGY",np.abs((cost - new_cost) / cost))
                     if np.abs((cost - new_cost) / cost) < self.threshold:
-                        converged = True
+                        converged_sol = True
+                        print("Solution Converged")
+                        break
 
-                    solution = new_solution
-                    derivatives = True
+                    cost = new_cost
+                    xs = new_xs.copy()
+                    us = new_us.copy()
 
-                    # decrease regularization term
-                    self.delta = min(1.0, self.delta) / self.init_delta
-                    self.mu *= self.delta
-                    if self.mu <= self.min_mu:
-                        self.mu = 0.0
+                     # decrease mu for next iteration
+                    self.delta = min(1/self.delta_zero,self.delta/self.delta_zero)
+                    self.mu = 0 if self.mu*self.delta < self.mu_min else self.mu*self.delta
 
-                    # accept the solution
-                    accepted = True
-                    break
-
-            if not accepted:
-                # increase regularization term.
-                self.delta = max(1.0, self.delta) * self.init_delta
-                self.mu = max(self.min_mu, self.mu * self.delta)
-
-                if self.mu > self.max_mu:
-                    break
-
-            if converged:
+                    accepted_solution = True
+                    
+            if not accepted_solution:
+                self.delta = max(self.delta_zero,self.delta*self.delta_zero)
+                self.mu = max(self.mu_min,self.mu*self.delta)
+            
+            if converged_sol:
                 break
+        
+        self.planned_us = us
+        return us[0]
 
-        self.prev_sol[:-1] = solution[1:]
-        self.prev_sol[-1] = solution[-1]  # last use the terminal input
-        return solution[0]
+    ############################################################################
+    #
+    #                           Derivative Pass
+    #
+    ############################################################################
 
-    def forward_pass(self, current_x, optimal_solution, solution):
-        # get size
-        # initialze
-        x = current_x
-        xs = current_x[np.newaxis, :]  # Das ist kein python
+    def step_derive(self,xu_t,gz_t):
+        #xu_t = xu[t]
+        #x_t = xs[t]
+        #gz_t = g_z[t]
+        jac = self.Jacobian_cost(xu_t, gz_t) # doesnt work
+        #jac_t = self.Jacobian_terminal_cost(x_t, gz_t)
+        hess = self.Hessian_cost(xu_t, gz_t)
+        #hess_t = self.Hessian_terminal_cost(x_t, gz_t)
 
-        def predict_trajectory(x,solution):
-            for t in range(self.pred_len):
-                print(x.shape)
-                print(solution[t].shape)
-                next_x = self.model.predict(x, solution[t])
-                print("next x",next_x.shape)
-                print("xs",xs.shape)
-                # update
-                xs = np.concatenate((xs, next_x), axis=0)  # das ist kein python
-                x = next_x
+        l_x = jac[:,:self.state_size]
+        l_u = jac[:,self.state_size:]
+        l_xx = np.array([hess[i,i] for i in range(self.state_size)]) # this code is horrible but i know it
+        l_uu = np.array([hess[i,i] for i in range(self.state_size,self.state_size + self.action_size)])
+        l_ux = np.array([hess[-1,i] for i in range(self.state_size)])
+        # print("jac",jac)
+        # #print("jac_t",jac_t)
+        # print("hess",hess)
+        # #print("hess_t",hess_t)
 
-        # check costs
-        cost = - self.model.get_reward()
+        # print("l_x",l_x)
+        # print("l_u",l_u)
+        # print("l_xx",l_xx)
+        # print("l_uu",l_uu)
+        # print("l_ux",l_ux)
+        return l_x,l_u,l_xx,l_uu,l_ux
 
-        f_x = nd.core.Gradient(xs[:-1])
-        f_u = nd.core.Gradient(xs[:-1])
+    def step_derive_dynamics(self,xu_t):
+        jac = self.Jacobian_dynamics(xu_t)
+        #hess = self.Hessian_dynamics(xu_t) # doesnt work for some reason
+        f_x = jac[:,:self.state_size]
+        f_u = jac[:,self.state_size:]
+        return f_x, f_u
 
-        l_x, l_xx, l_u, l_uu, l_ux = \
-            self._calc_gradient_hessian_cost(xs,optimal_solution, solution)
+    def derivatives(self, xs, us, g_z):
 
-        return xs, cost, f_x, f_u, l_x, l_xx, l_u, l_uu, l_ux
+        xu = np.append(xs,us, axis=1)
+        #Calculate derivatives
 
-    def _calc_gradient_hessian_cost(self, pred_xs, goal_xs, solution):
+        l_xs = np.zeros((self.horizon_length, self.state_size))
+        l_us = np.zeros((self.horizon_length, self.action_size))
+        l_xxs = np.zeros((self.horizon_length, self.state_size))
+        l_uus = np.zeros((self.horizon_length, self.action_size))
+        l_uxs = np.zeros((self.horizon_length, self.state_size))
+        f_xs = np.zeros((self.horizon_length, self.state_size,self.state_size))
+        f_us = np.zeros((self.horizon_length, self.state_size,self.action_size))
 
-        print("KOMMT HIER HIN WTF")
+        for t in range(self.horizon_length):
+            l_x, l_u, l_xx, l_uu, l_ux = self.step_derive(xu[t],g_z[t])
+            f_x, f_u = self.step_derive_dynamics(xu[t])
+            l_xs[t,:] = l_x
+            l_us[t,:] = l_u
+            l_xxs[t,:] = l_xx
+            l_uus[t,:] = l_uu
+            l_uxs[t,:] = l_ux
+            f_xs[t,:] = f_x
+            f_us[t,:] = f_u
 
-        print("CALC L STUFF BULLSHIT=====================")
-        print("predxs",pred_xs.shape)
-        print("solution",solution.shape)
-        print("repeat stuff",np.repeat(solution,pred_xs.shape[0],axis=0).shape)
+        #calculate terminal cost derivatives
+        lx_T = self.Jacobian_terminal_cost(xs[-1],g_z[-1])[[0]]
+        lxx_T = self.Hessian_terminal_cost(xs[-1],g_z[-1])
+        lxx_T = np.array([[lxx_T[i,i] for i in range(self.state_size)]])
+        l_xs = np.append(l_xs, lx_T, axis=0)
+        l_xxs = np.append(l_xxs, lxx_T, axis=0)
+        return l_xs,l_us,l_xxs,l_uus,l_uxs,f_xs,f_us
 
-        if goal_xs is None:
-            goal_xs = np.zeros((pred_xs.shape[0],pred_xs.shape[1]+solution.shape[0]))
+    ############################################################################
+    #
+    #                           Backward Pass
+    #
+    ############################################################################
 
-        print("goalxs",goal_xs.shape)
+    def _Q(self,l_x,l_u,l_xx,l_uu,l_ux,f_x,f_u,V_x,V_xx):
+        # print("l_x",l_x.shape)
+        # print("l_u",l_u.shape)
+        # print("l_xx",l_xx.shape)
+        # print("l_uu",l_uu.shape)
+        # print("l_ux",l_ux.shape)
+
+        # print("f_x",f_x.shape)
+        # print("f_u",f_u.shape)
+
+        # print("V_x",V_x.shape)
+        # print("V_xx",V_xx.shape)
+        Q_x = l_x + f_x.T @ V_x
+        # print("Q_x",Q_x.shape)
+        Q_u = l_u + f_u.T @ V_x
+        # print("Q_u",Q_u.shape)
+        Q_xx = l_xx + f_x.T @ V_xx @ f_x #+ V_x@f_xx
+        # print("Q_xx",Q_xx.shape)
+        #import pdb; pdb.set_trace()
+        Q_uu = l_uu + f_u.T @ (V_xx + self.mu * np.eye(self.state_size)) @ f_u #+ V_x @ f_uu # 10a
+        Q_ux = l_ux + f_u.T @ (V_xx + self.mu * np.eye(self.state_size)) @ f_x #+ V_x @ f_ux # 10b
+        
+        return Q_x, Q_u, Q_xx, Q_uu, Q_ux
 
 
-        xugz = np.append(np.append(pred_xs,solution.reshape(),axis=1), goal_xs, axis=1)
-        xgz = np.append(pred_xs,goal_xs, axis=1)
-        jac_c = self.Jacobian_cost(xugz)
-        jax_ct = self.Jacobian_terminal_cost(xgz)
-        hess_c = self.Hessian_cost(xugz)
-        hess_ct = self.Hessian_cost(xgz)
+    def backward_pass(self,l_x,l_u,l_xx,l_uu,l_ux,f_x,f_u):
+        
+        V_x = l_x[-1]
+        V_xx = l_xx[-1]
 
-        return l_x, l_xx, l_u, l_uu, l_ux
+        ks = np.zeros((self.horizon_length, self.action_size))
+        Ks = np.zeros((self.horizon_length, self.action_size, self.state_size))
 
-    def backward_pass(self, f_x, f_u, l_x, l_xx, l_u, l_uu, l_ux):
-        V_x_old = l_x[-1]
-        V_xx_old = l_xx[-1]
-        k = np.zeros((self.output_size, self.output_size))
-        K = np.zeros((self.output_size, self.state_size, self.state_size))
+        for t in range(self.horizon_length-1, -1,-1):
+            Q_x, Q_u, Q_xx, Q_uu, Q_ux = self._Q(l_x[t],l_u[t],l_xx[None, t],l_uu[None, t],l_ux[None,t],f_x[t],f_u[t],V_x,V_xx)
+            ks[t] = k = -Q_uu**-1 @ Q_u # 10c
+            Ks[t] = K = -Q_uu**-1 @ Q_ux # 10d
 
-        V_x = 0  # dummys
-        V_xx = 0  # dummys
-        for t in range(self.output_size - 1, -1, -1):
-            # get Q val
-            Q_x, Q_u, Q_xx, Q_ux, Q_uu = self.q(f_x[t], f_u[t], l_x[t],
-                                                l_u[t], l_xx[t], l_ux[t],
-                                                l_uu[t], V_x_old, V_xx_old)
-            # calc gain
-            k[t] = - np.linalg.solve(Q_uu, Q_u)  # 10c
-            K[t] = - np.linalg.solve(Q_uu, Q_ux)  # 10d
-            # update V_x val
-            V_x = Q_x + K[t].T @ Q_uu @ k[t]  # 11b
-            V_x += K[t].T @ Q_u + Q_ux.T @ k[t]  # 11b
-            # update V_xx val
-            V_xx = Q_xx + K[t].T @ Q_uu @ K[t]  # 11c
-            V_xx += K[t].T @ Q_ux + Q_ux.T @ K[t]
-            V_xx = 0.5 * (V_xx + V_xx.T)  # to maintain symmetry.
+            #DeltaV = 1/2 * k.T @ Q_uu @ k @ Q_u # 11a
+            V_x    = Q_x + K.T @ Q_uu @ k + K.T @ Q_u + Q_ux.T @ k # 11b
+            V_xx  = Q_xx + K.T @ Q_uu @ K + K.T @ Q_ux + Q_ux.T @ K # 11c
 
-        return k, K
+            V_xx = 0.5 * (V_xx + V_xx.T) 
+        
+        return ks,Ks
+        
 
-    def q(self, f_x, f_u, l_x, l_u, l_xx, l_ux, l_uu, V_x, V_xx):
-        size = len(l_x)
 
-        Q_x = l_x + f_x.T @ V_x  # 5a
-        Q_u = l_u + f_u.T @ V_x  # 5b
-        Q_xx = l_xx + f_x.T @ V_xx @ f_x  # 5c möglicherweise falsch
-
-        reg = self.mu * np.eye(size)  # regularization term
-        Q_uu = l_uu + f_u.T @ (V_xx + reg) @ f_u  # 10a möglicherweise falsch
-        Q_ux = l_ux + f_u.T @ (V_xx + reg) @ f_x  # 10b möglicherweise falsch
-
-        # TODO wenns nicht geht + V_x @ f_
-
-        return Q_x, Q_u, Q_xx, Q_ux, Q_uu
-
-    def calc_input_trajectory(self, k, K, xs, solution, alpha):
-        # get size
-        (pred_len, input_size, state_size) = K.shape
-        # initializepred_len# init state is same
-        new_solution = np.zeros((pred_len, input_size))
-
-        for t in range(pred_len):
-            new_solution[t] = solution[t] \
-                              + alpha * k[t] \
-                              + np.dot(K[t], (new_xs[t] - xs[t]))
-            new_xs[t + 1] = self.model.predict(new_xs[t], new_solution[t])
-
-        return new_xs, new_solution
+    ############################################################################
+    #
+    #                           Forward Pass
+    #
+    ############################################################################
+    def forward_pass(self,alpha,k,K,xs,us):
+        x_hat, u_hat = np.zeros_like(xs), np.zeros_like(us)
+        x_hat[0] = xs[0].copy()
+        c_hat = 0
+        for i in range(self.horizon_length):
+            u_hat[i] = us[i] + alpha*k[i] + K[i]@(x_hat[i]-xs[i]) # 12
+            u_hat = np.clip(u_hat,self.bounds_low,self.bounds_high)
+            x_hat[i+1] = self.model.predict(x_hat[i],u_hat[i])
+            c_hat -= self.model.last_reward
+        
+        return x_hat, u_hat, c_hat
