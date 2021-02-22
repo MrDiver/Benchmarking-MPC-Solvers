@@ -7,7 +7,7 @@ class Model:
         self.last_reward = 0
         self.last_observation = None
         self.bounds_low = 0
-        self.boudns_high = 0
+        self.bounds_high = 0
         self.state_size = -1
         self.action_size = -1
 
