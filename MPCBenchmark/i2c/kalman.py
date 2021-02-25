@@ -15,6 +15,10 @@ class kalman:
 
         self.mu_t = mu_t
         self.var_t = var_t
+        self.mus = []
+        self.sigs = []
+        self.mus.append(self.mu_t)
+        self.sigs.append(self.var_t)
 
     def dynamics(self, x, u):
         return self.A @ x + self.a + self.B @ u
@@ -45,3 +49,12 @@ class kalman:
         L_t = np.linalg.solve(sig_y, self.sig_x @ C.T)
         self.mu_x = self.mu_x + L_t @ (y_t.reshape((-1, 1)) - C @ self.mu_x)
         self.sig_x = (np.eye(np.shape(L_t)[0]) - L_t @ C) @ self.sig_x
+
+    def smooth(self, t):
+        """
+        t = current time step
+        """
+        J = np.linalg.solve(self.sigs[t-1], self.sigs[t-1] @ self.A.T)
+        self.mus[t] = self.mus[t-1] + J @ (self.mus[t] - self.A @ self.mus[t-1])
+        self.sigs[t] = self.sigs[t-1] + J @ (self.sigs[t] - self.sigs[t-1]) @ J.T
+        return self.mus[t[:, 0]], (self.C @ self.mus[t])[:, 0]
