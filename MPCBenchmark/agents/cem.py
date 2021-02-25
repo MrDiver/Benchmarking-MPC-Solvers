@@ -1,7 +1,8 @@
 from MPCBenchmark.agents.agent import Agent
 from MPCBenchmark.models.model import Model
-import multiprocessing as mp
 import numpy as np
+from gym.utils import EzPickle
+import multiprocessing as mp
 
 
 class CEM(Agent):
@@ -13,11 +14,11 @@ class CEM(Agent):
     alpha: how much of the old mean and variance is used to compute a new mean and variance
     """
 
-    def __init__(self, bounds_low, bounds_high, input_size, output_size, model, params: dict) -> None:
-        super().__init__(bounds_low, bounds_high, input_size, output_size, model)
+    def __init__(self, model: Model, params: dict, cores: int = 8) -> None:
+        super().__init__("CEM", model)
         self.K = params["K"]
-        self.T = params["T"]
-        self.U = np.zeros((self.T, self.output_size), dtype=np.float64)
+        self.horizon_length = params["T"]
+        self.planned_us = np.zeros((self.horizon_length, self.action_size), dtype=np.float64)
         self.max_iter = params["max_iter"]
         #self.K = params["n_samples"]
         self.n_elite = params["n_elite"]
@@ -25,36 +26,43 @@ class CEM(Agent):
         self.alpha = params["alpha"]
         self.instant_cost = params["instant_cost"]
         # Distribution over output parameters
-        self.std = np.ones((self.T, output_size))*params["std"]
-        self.mean = np.zeros((self.T, output_size))
-        self.pool = mp.Pool(12)
+        self.std = np.ones((self.horizon_length, self.action_size))*params["std"]
+        self.planned_us = np.zeros((self.horizon_length, self.action_size))
+        self.pool = mp.Pool(cores)
 
-        def f(state, sample):
-            reward = 0
-            for at in sample:
-                state = self.model.predict(state, at)
-                reward += self.model.get_reward()
-            return reward
-        self.f = f
+    @staticmethod
+    def f(model, state, sample, g_z):
+        reward = 0
+        for u_t in sample:
+            state = model.predict(state, u_t, g_z)
+            reward += model.get_reward()
+        return reward
 
-    def calc_action(self, x):
-        std = self.std
+    @staticmethod
+    def f_wrapper(x):
+        return CEM.f(*x)
+
+    def _calc_action(self, x, g_z):
+        
+        std = self.std.copy()
         for _ in range(self.max_iter):
             samples = np.random.normal(
-                self.mean, std, (self.K, self.T, self.output_size))
+                self.planned_us, std, (self.K, self.horizon_length, self.action_size))
             samples = np.clip(samples, self.bounds_low, self.bounds_high)
-            rewards = np.array([self.f(x, sample) for sample in samples])
+            inputs_ = [(self.model, x, sample, g_z) for sample in samples]
+            #print(inputs_)
+            
+            rewards = np.array(self.pool.map(CEM.f_wrapper,inputs_))
+            #rewards = np.array([self.f_wrapper(x) for x in inputs_])
+
             elites = samples[np.argsort(-rewards)][: self.n_elite]
 
             new_mean = np.mean(elites, axis=0)
             new_std = np.std(elites, axis=0)
-            self.mean = self.alpha * self.mean + (1 - self.alpha) * new_mean
+            self.planned_us = self.alpha * self.planned_us + (1 - self.alpha) * new_mean
             std = self.alpha * std + (1 - self.alpha) * new_std
 
-            u0 = self.mean[0]
-            self.mean = np.roll(self.mean, -1)
-            self.mean[-1] = 0
             if (std < self.epsilon).all():
                 break
-
-        return np.clip(u0, self.bounds_low, self.bounds_high)
+        u0 = self.planned_us[0]
+        return u0

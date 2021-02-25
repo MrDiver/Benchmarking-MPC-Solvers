@@ -23,6 +23,9 @@ class PendulumModel(Model):
         self.bounds_low = -self.max_torque
         self.bounds_high = self.max_torque
 
+        self.action_size = 1
+        self.state_size = 2
+
         self.seed()
 
     def seed(self, seed=None):

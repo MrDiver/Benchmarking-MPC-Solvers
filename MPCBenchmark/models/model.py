@@ -6,11 +6,15 @@ class Model:
         super().__init__()
         self.last_reward = 0
         self.last_observation = None
+        self.bounds_low = 0
+        self.bounds_high = 0
+        self.state_size = -1
+        self.action_size = -1
 
-    def predict(self, current_state: np.ndarray, action: np.ndarray) -> np.ndarray:
+    def predict(self, current_state: np.ndarray, action: np.ndarray, goal_trajectory: np.ndarray) -> np.ndarray:
         raise NotImplementedError
 
-    def batch_predict(self, states: np.ndarray, actions: np.ndarray) -> np.ndarray:
+    def batch_predict(self, states: np.ndarray, actions: np.ndarray, goal_trajectory: np.ndarray) -> np.ndarray:
         raise NotImplementedError
 
     def get_reward(self):

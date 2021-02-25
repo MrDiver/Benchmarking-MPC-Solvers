@@ -20,7 +20,7 @@ class GymEnvModel(Model):
             current_state = current_state[0]
         self.env.reset()
         self.env.env.state = current_state
-        obs, r, done, _ = self.env.step(action)
+        obs, r, _, _ = self.env.step(action)
         newstate = self.env.state
         self.last_reward = r
         self.last_observation = obs
