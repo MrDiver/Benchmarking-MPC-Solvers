@@ -39,7 +39,7 @@ class Agent:
             self.planned_xs,self.planned_costs = self.simulate_trajectory(state,self.planned_us,g_z)
             self._log_iteration(self.planned_xs,self.planned_us,self.planned_costs)
             self.planned_us = np.roll(self.planned_us,-1)
-            self.planned_us[-1] = self.planned_us[-2]
+            self.planned_us[-1] = np.zeros(self.action_size)
 
         self.step_iteration_variable+=1
         return np.clip(u0, self.bounds_low, self.bounds_high)
