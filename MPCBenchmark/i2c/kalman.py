@@ -28,6 +28,12 @@ class kalman:
     def dynamics(self, x, u):
         return self.A @ x + self.a + self.B @ u
 
+
+    """
+    Performs the kalman filtering
+    :param u: torque
+    :param y: measurement
+    """
     def __call__(self, u, y):
         self.predict_step(self.A, self.sig_eta, u)
         self.update_step(self.C, self.sig_zeta, y)
@@ -39,8 +45,9 @@ class kalman:
 
     def predict_step(self, A, eta, u):
         """
-        A = transition matrix
-        eta = process noise covariance matrix
+        Predicts the values for mean and variance
+        :param A: transition matrix
+        :param eta: process noise covariance matrix
         """
         self.mu_x = self.dynamics(self.mu_x, u)
         self.mu_predict.append(self.mu_x)
@@ -48,10 +55,11 @@ class kalman:
 
     def update_step(self, C, zeta, y_t):
         """
-        L_t = Kalman gain matrix
-        C = observation matrix
-        zeta = observation noise covariance matrix
-        y_t = true measurement
+        Updates the values of mean and variance
+        :param L_t: Kalman gain matrix
+        :param C: observation matrix
+        :param zeta: observation noise covariance matrix
+        :param y_t: true measurement
         """
         sig_y = C @ self.sig_x @ C.T + zeta
         L_t = self.sig_x @ C.T @ np.linalg.pinv(sig_y)
@@ -60,7 +68,9 @@ class kalman:
 
     def smooth(self, t, end):
         """
-        t = current time step
+        Kalman smoothing for the current time step
+        :param t: current time step
+        :param end: if it is the end of the trajectory
         """
         if end:
             self.mu_smo = self.mus_filt[t]

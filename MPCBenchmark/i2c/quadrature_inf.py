@@ -26,17 +26,34 @@ class QuadratureInference(object):
         self.prev_x_pts = None
         self.prev_m = None
 
+    """
+    Propagates the cubature points
+    :param m_x: previous time step mean
+    :param sig_x: previous time step variance
+    """
     def propagate(self, m_x, sig_x):
         m_x = m_x.reshape((-1, self.dim))
         scale = self.sf * np.linalg.cholesky(sig_x)
         return m_x + self.base_pts.dot(scale.T)
 
+    """
+    Propagates the cubature points evaluates them, then predicts mean, variance and cross-covariance
+    :param: f: function with which cubature points should be evaluated
+    :param m_x: previous time step mean or predicted mean
+    :param sig_x: previous time step variance or predicted variance
+    """
     def __call__(self, f, m_x, sig_x):
         x_pts = self.propagate(m_x, sig_x)
         y_pts, m_y, sig_y, sig_xy = self.evaluate(f, m_x, x_pts)
         self.x_pts, self.y_pts = x_pts, y_pts
         return m_y.T, sig_y, sig_xy
 
+    """
+    Predicts mean, variance and cross-covariance based on cubature points
+    :param: f: function with which cubature points should be evaluated (either dynamics or measurement)
+    :param m_x: previous time step mean
+    :param x_pts: current cubature points
+    """
     def evaluate(self, f, m_x, x_pts):
         y_pts = f(x_pts)
         m_y = (self.wghts_m @ y_pts).T
