@@ -162,7 +162,7 @@ class AcrobotModel(Model):
         #print("x", x)
         transformed = np.append(x, u, axis=1)
         #print("Transformed", transformed)
-        transformed[:, 0] = - cos(x[:, 0]) - cos(x[:, 1] + x[:, 0])-10
+        transformed[:, 0] = - cos(x[:, 0]) - cos(x[:, 1] + x[:, 0])-2
         #print("Transformed2", transformed)
         transformed[:, 1:4] = 0
         #print("Transformed3", transformed)
