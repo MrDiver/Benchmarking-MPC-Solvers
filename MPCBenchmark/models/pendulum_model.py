@@ -41,7 +41,7 @@ class PendulumModel(Model):
     def _transform(self, x, u):
         th = angle_normalize(x[:, [0]])
         thdot = x[:, [1]]
-        z = np.append(np.append(th, thdot, axis=1), u, axis=1)
+        z = -np.append(np.append(th, thdot, axis=1), u, axis=1)
         return z
 
     def _state_cost(self, z, g_z):

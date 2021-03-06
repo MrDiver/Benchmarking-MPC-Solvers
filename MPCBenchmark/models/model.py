@@ -22,8 +22,9 @@ class Model:
         if goal is None:
             goal = np.zeros(z.shape)
         costs = self._state_cost(z, goal)
+        #print("current_state", current_state)
         newstate = self._dynamics(current_state, action)
-
+        #print("newstate", newstate)
         self.last_reward = -costs[0]
         self.last_observation = newstate[0]
         self.last_u = action[0]

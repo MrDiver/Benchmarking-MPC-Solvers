@@ -8,7 +8,6 @@ Reward is also reshaped to be similar to PyBullet/roboschool version
 More difficult, since dt is 0.05 (not 0.01), and only 200 timesteps
 """
 
-import math
 import gym
 from gym import spaces
 from gym.utils import seeding
@@ -39,7 +38,7 @@ class CartPoleSwingUpEnv(Environment):
         self.t_limit = 1000
 
         # Angle at which to fail the episode
-        self.theta_threshold_radians = 12 * 2 * math.pi / 360
+        self.theta_threshold_radians = 12 * 2 * np.pi / 360
         self.x_threshold = 2.4
 
         high = np.array([

@@ -15,6 +15,7 @@ import numpy as np
 class CartPoleSwingUpModel(Model):
     def __init__(self):
         super().__init__()
+        # TODO: maybe change rendering to use the model instead
         self.g = 9.82  # gravity
         self.m_c = 0.5  # cart mass
         self.m_p = 0.5  # pendulum mass
@@ -48,7 +49,7 @@ class CartPoleSwingUpModel(Model):
         self.bounds_high = np.array([1])
         self.state_size = 4
         self.action_size = 1
-        self.W = -np.diag([0.5, 0, 1, 0, 0])
+        self.W = -np.diag([1, 0, 1, 0, 0])
         self.W_t = -np.diag([5, 0, 1, 0, 0])
 
     def reset(self):
@@ -94,9 +95,12 @@ class CartPoleSwingUpModel(Model):
         xc, x_dot, theta, theta_dot = x[:, [
             0]], x[:, [1]], x[:, [2]], x[:, [3]]
 
+        tmp = 1
+        if (xc > self.x_threshold).any() or (xc < -self.x_threshold).any():
+            tmp = -10000
         xc = np.cos((xc/self.x_threshold)*(np.pi/2.0))
-        theta = np.sqrt(np.cos(theta)+1.0)
-        xc = xc * theta
+        theta = np.cos(theta)+1.0
+        xc = xc * theta * tmp
         theta = np.zeros_like(theta)
         return np.append(np.append(np.append(np.append(xc, x_dot, axis=1), theta, axis=1), theta_dot, axis=1), u, axis=1)
 

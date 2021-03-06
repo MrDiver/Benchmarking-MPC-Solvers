@@ -7,11 +7,13 @@ from MPCBenchmark.agents.mppi import MPPI
 from MPCBenchmark.agents.ilqr import ILQR
 from MPCBenchmark.agents.agent import Agent
 
+from MPCBenchmark.envs.env import Environment
 from MPCBenchmark.envs.pendulum_env import PendulumEnv as PENV
 from MPCBenchmark.envs.cartpole_swingup_env import CartPoleSwingUpEnv as CPSUENV
-from MPCBenchmark.envs.env import Environment
+from MPCBenchmark.envs.acrobot_env import AcrobotEnv as ACENV
 from MPCBenchmark.models.pendulum_model import PendulumModel as PEMOD
 from MPCBenchmark.models.cartpole_swingup_model import CartPoleSwingUpModel as CPSUMOD
+from MPCBenchmark.models.acrobot_model import AcrobotModel as ACMOD
 from MPCBenchmark.models.model import DummyModel
 from MPCBenchmark.models.model import Model
 import numpy as np
@@ -42,6 +44,8 @@ env: Environment = PENV()
 model: Model = PEMOD()
 env: Environment = CPSUENV()
 model: Model = CPSUMOD()
+env: Environment = ACENV()
+model: Model = ACMOD()
 #model: Model = DummyModel(4, 1)
 # model = GEM(ENVIRONMENT)j
 
@@ -59,9 +63,10 @@ mppi: MPPI = MPPI(model, params_mppi)
 ilqr: ILQR = ILQR(model, params_ilqr)
 
 
-save_plots = True
-# experiment_states = [np.array([np.pi, 0]), np.array(
-# [np.pi, 1]), np.array([0, 0]), np.array([np.pi/2, 0])]
+save_plots = False
+
+experiment_states = [np.array([np.pi, 0]), np.array(
+    [np.pi, 1]), np.array([0, 0]), np.array([np.pi/2, 0])]
 
 experiment_states = [np.array([0, 0, np.pi, 0]), np.array(
     [0, 1, np.pi, 0]), np.array([0, 0, 0, 0]), np.array([0, 1, 0, 0])]
@@ -119,7 +124,7 @@ for exp_num, reset_state in enumerate(experiment_states, start=1):
             print("Iteration Time:", iterationtime)
             # print("State",env.state)
             # print("action",action)
-            # print("Cost",-r)
+            print("Cost", -r)
             computation_time.append(iterationtime)
             # print(action, "with reward", r)_get_obs
             if not save_plots:
