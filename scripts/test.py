@@ -22,7 +22,6 @@ import time
 from datetime import datetime
 import matplotlib.pyplot as plt
 import os
-import mpld3
 
 # plt.style.use("seaborn-darkgrid")
 plt.rcParams.update({'font.size': 20, 'text.usetex': True})
