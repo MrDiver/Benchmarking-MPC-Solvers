@@ -42,10 +42,11 @@ experiment_path = "experiments/"+timestring
 
 env: Environment = PENV()
 model: Model = PEMOD()
-env: Environment = CPSUENV()
-model: Model = CPSUMOD()
+# env: Environment = CPSUENV()
+# model: Model = CPSUMOD()
 env: Environment = ACENV()
 model: Model = ACMOD()
+
 #model: Model = DummyModel(4, 1)
 # model = GEM(ENVIRONMENT)j
 
@@ -55,7 +56,7 @@ params_cem = {"K": 50, "T": 15, "max_iter": 5,
 
 params_mppi = {"K": 50, "T": 15, "std": 1,
                "terminal_cost": (lambda x: 0), "instant_cost": (lambda x, u: 0),
-               "lam": 0.2}
+               "lam": 0.1}
 
 params_ilqr = {"T": 15, "max_iter": 5, "threshold": 1e-5}
 cem: CEM = CEM(model, params_cem)
@@ -92,7 +93,7 @@ for exp_num, reset_state in enumerate(experiment_states, start=1):
             comb_ax[i].set_xlabel("Time s")
             comb_ax[i].set_ylabel("Action")
 
-    for solver in [cem, mppi, ilqr]:
+    for solver in [ilqr]:
         solver: Agent = solver
         # env.seed(seed)
         print("\n\n\n", solver.name, " now participates in Experiment No.", exp_num)
