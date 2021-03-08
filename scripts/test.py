@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 import os
 
 # plt.style.use("seaborn-darkgrid")
-plt.rcParams.update({'font.size': 20, 'text.usetex': True})
+plt.rcParams.update({'font.size': 20, 'text.usetex': False})
 
 timestring = datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
 
@@ -63,7 +63,7 @@ mppi: MPPI = MPPI(model, params_mppi)
 ilqr: ILQR = ILQR(model, params_ilqr)
 
 
-save_plots = False
+save_plots = True
 
 experiment_states = [np.array([np.pi, 0]), np.array(
     [np.pi, 1]), np.array([0, 0]), np.array([np.pi/2, 0])]
@@ -92,7 +92,7 @@ for exp_num, reset_state in enumerate(experiment_states, start=1):
             comb_ax[i].set_xlabel("Time s")
             comb_ax[i].set_ylabel("Action")
 
-    for solver in [ilqr]:
+    for solver in [cem, mppi, ilqr]:
         solver: Agent = solver
         # env.seed(seed)
         print("\n\n\n", solver.name, " now participates in Experiment No.", exp_num)

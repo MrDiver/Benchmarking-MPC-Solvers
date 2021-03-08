@@ -8,7 +8,7 @@ from multiprocessing import Pool, Queue, Process
 
 
 class ILQR(Agent):
-    def __init__(self, model, params, workers=12) -> None:
+    def __init__(self, model, params, workers=8) -> None:
         super().__init__("ILQR", model)
         self.horizon_length = params["T"]
         self.max_iter = params["max_iter"]
@@ -73,7 +73,6 @@ class ILQR(Agent):
 
     # , Jc, Jtc, Hc, Htc, Jd, Hd):
     def worker(self, request_queue, response_queue):
-        print("Worker Over Here")
         while True:
             task = request_queue.get()
             iteration, xu_t, gz_t = task
