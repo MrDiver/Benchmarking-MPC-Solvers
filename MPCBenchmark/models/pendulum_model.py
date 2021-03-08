@@ -5,10 +5,14 @@ from MPCBenchmark.models.model import Model
 
 
 class PendulumModel(Model):
+    max_torque = 2.
+    bounds_low = -np.array([max_torque])
+    bounds_high = np.array([max_torque])
+    action_size = 1
+    state_size = 2
 
     def __init__(self, g=10.0):
         self.max_speed = 8
-        self.max_torque = 2.
         self.dt = .05
         self.g = g
         self.m = 1.
@@ -17,12 +21,6 @@ class PendulumModel(Model):
         self.W_t = np.diag([1.0, 2.0, 0.0])
         self.viewer = None
         self.last_u = None
-
-        self.bounds_low = -np.array([self.max_torque])
-        self.bounds_high = np.array([self.max_torque])
-
-        self.action_size = 1
-        self.state_size = 2
 
         self.seed()
 

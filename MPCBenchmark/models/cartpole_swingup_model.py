@@ -13,6 +13,11 @@ import numpy as np
 
 
 class CartPoleSwingUpModel(Model):
+    bounds_low = np.array([-1])
+    bounds_high = np.array([1])
+    state_size = 4
+    action_size = 1
+
     def __init__(self):
         super().__init__()
         # TODO: maybe change rendering to use the model instead
@@ -33,22 +38,11 @@ class CartPoleSwingUpModel(Model):
         self.theta_threshold_radians = 12 * 2 * np.pi / 360
         self.x_threshold = 2.4
 
-        high = np.array([
-            np.finfo(np.float32).max,
-            np.finfo(np.float32).max,
-            np.finfo(np.float32).max,
-            np.finfo(np.float32).max,
-            np.finfo(np.float32).max])
-
-        self.viewer = None
         self.state = None
 
         self.last_reward = 0
         self.last_observation = None
-        self.bounds_low = np.array([-1])
-        self.bounds_high = np.array([1])
-        self.state_size = 4
-        self.action_size = 1
+
         self.W = -np.diag([1, 0, 1, 0, 0])
         self.W_t = -np.diag([5, 0, 1, 0, 0])
 

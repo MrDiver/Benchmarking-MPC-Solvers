@@ -79,6 +79,10 @@ class AcrobotModel(Model):
     action_arrow = None
     domain_fig = None
     actions_num = 3
+    bounds_low = np.array([-1])
+    bounds_high = np.array([1])
+    state_size = 4
+    action_size = 1
 
     def __init__(self, torque_noise_max=0):
         self.viewer = None
@@ -86,10 +90,6 @@ class AcrobotModel(Model):
         self.torque_noise_max = torque_noise_max
         self.last_reward = 0
         self.last_observation = None
-        self.bounds_low = np.array([-1])
-        self.bounds_high = np.array([1])
-        self.state_size = 4
-        self.action_size = 1
         self.W = np.diag([1, 0, 0, 0, 0])
         self.W_t = np.diag([1, 0, 0, 0, 0])
         self.np_random, self._seed = seeding.np_random()
@@ -155,28 +155,28 @@ class AcrobotModel(Model):
         ns[1] = wrap(ns[1], -pi, pi)
         ns[2] = bound(ns[2], -self.MAX_VEL_1, self.MAX_VEL_1)
         ns[3] = bound(ns[3], -self.MAX_VEL_2, self.MAX_VEL_2)
-        #print("ns", ns[None, :])
+        # print("ns", ns[None, :])
         return ns[None, :]
 
     def _transform(self, x, u):
-        #print("x", x)
+        # print("x", x)
         transformed = np.append(x, u, axis=1)
-        #print("Transformed", transformed)
+        # print("Transformed", transformed)
         transformed[:, 0] = - cos(x[:, 0]) - cos(x[:, 1] + x[:, 0])-2
-        #print("Transformed2", transformed)
+        # print("Transformed2", transformed)
         transformed[:, 1:4] = 0
-        #print("Transformed3", transformed)
+        # print("Transformed3", transformed)
         return transformed
 
     def _state_cost(self, z, g_z):
         _zd = z-g_z
-        #costs = [(z @ self.W) @ z.T for z in _zd]
+        # costs = [(z @ self.W) @ z.T for z in _zd]
         costs = np.einsum("bi,ij,bj->b", _zd, self.W, _zd)
         return costs
 
     def _terminal_cost(self, x, g_x):
         _zd = x-g_x
-        #costs = [(z @ self.W) @ z.T for z in _zd]
+        # costs = [(z @ self.W) @ z.T for z in _zd]
         costs = np.einsum("bi,ij,bj->b", _zd, self.W_t, _zd)
         return costs
 
@@ -234,7 +234,7 @@ def rk4(derivs, y0, t, *args, **kwargs):
         kwargs: additional keyword arguments passed to the derivative function
 
     Example 1 ::
-        ## 2D system
+        # 2D system
         def derivs6(x,t):
             d1 =  x[0] + 2*x[1]
             d2 =  -3*x[0] + 4*x[1]
@@ -244,7 +244,7 @@ def rk4(derivs, y0, t, *args, **kwargs):
         y0 = (1,2)
         yout = rk4(derivs6, y0, t)
     Example 2::
-        ## 1D system
+        # 1D system
         alpha = 2
         def derivs(x,t):
             return -alpha*x + exp(-t)

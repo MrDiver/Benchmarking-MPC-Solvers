@@ -3,14 +3,15 @@ from gym.utils import seeding
 
 
 class Model:
+    bounds_low = 0
+    bounds_high = 0
+    state_size = -1
+    action_size = -1
+
     def __init__(self) -> None:
         super().__init__()
         self.last_reward = 0
         self.last_observation = None
-        self.bounds_low = 0
-        self.bounds_high = 0
-        self.state_size = -1
-        self.action_size = -1
         self.np_random, self._seed = seeding.np_random()
 
     def predict(self, current_state: np.ndarray, action: np.ndarray, goal=None) -> np.ndarray:

@@ -1,21 +1,17 @@
-# chaos
-from MPCBenchmark.envs.gym_wrapper import GymWrapperEnv as GEW
-# from MPCBenchmark.envs.mujym_wrapper import MujymWrapperEnv as MEW
-from MPCBenchmark.models.gym_model import GymEnvModel as GEM
-from MPCBenchmark.agents.cem import CEM
-from MPCBenchmark.agents.mppi import MPPI
-from MPCBenchmark.agents.ilqr import ILQR
-from MPCBenchmark.agents.agent import Agent
+from MPCBenchmark.agents import CEM
+from MPCBenchmark.agents import MPPI
+from MPCBenchmark.agents import ILQR
+from MPCBenchmark.agents import Agent
 
-from MPCBenchmark.envs.env import Environment
-from MPCBenchmark.envs.pendulum_env import PendulumEnv as PENV
-from MPCBenchmark.envs.cartpole_swingup_env import CartPoleSwingUpEnv as CPSUENV
-from MPCBenchmark.envs.acrobot_env import AcrobotEnv as ACENV
-from MPCBenchmark.models.pendulum_model import PendulumModel as PEMOD
-from MPCBenchmark.models.cartpole_swingup_model import CartPoleSwingUpModel as CPSUMOD
-from MPCBenchmark.models.acrobot_model import AcrobotModel as ACMOD
-from MPCBenchmark.models.model import DummyModel
-from MPCBenchmark.models.model import Model
+from MPCBenchmark.envs import Environment
+from MPCBenchmark.envs import PendulumEnv as PENV
+from MPCBenchmark.envs import CartPoleSwingUpEnv as CPSUENV
+from MPCBenchmark.envs import AcrobotEnv as ACENV
+from MPCBenchmark.models import PendulumModel as PEMOD
+from MPCBenchmark.models import CartPoleSwingUpModel as CPSUMOD
+from MPCBenchmark.models import AcrobotModel as ACMOD
+from MPCBenchmark.models import DummyModel
+from MPCBenchmark.models import Model
 import numpy as np
 import gym_cartpole_swingup
 import time

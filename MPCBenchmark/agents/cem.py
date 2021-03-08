@@ -23,7 +23,6 @@ class CEM(Agent):
         self.n_elite = params["n_elite"]
         self.epsilon = params["epsilon"]
         self.alpha = params["alpha"]
-        self.instant_cost = params["instant_cost"]
         # Distribution over output parameters
         self.std = np.ones(
             (self.horizon_length, self.action_size))*params["std"]
