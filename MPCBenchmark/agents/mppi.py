@@ -12,8 +12,6 @@ class MPPI(Agent):
         self.planned_us = np.zeros(
             (self.horizon_length, self.action_size), dtype=np.float64)
         self.std = np.ones((1, 1))*params["std"]
-        self.terminal_cost = params["terminal_cost"]
-        self.instant_cost = params["instant_cost"]
         self.lam = params["lam"]
         self.x = np.zeros((self.horizon_length+1, self.state_size))
 

@@ -12,6 +12,7 @@ class PendulumModel(Model):
     state_size = 2
 
     def __init__(self, g=10.0):
+        super().__init__("Pendulum Model (No Noise)")
         self.max_speed = 8
         self.dt = .05
         self.g = g

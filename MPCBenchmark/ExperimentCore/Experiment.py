@@ -2,7 +2,7 @@ from MPCBenchmark.envs import Environment
 from MPCBenchmark.models import Model
 from MPCBenchmark.agents import Agent
 import numpy as np
-from time import time
+import time
 
 
 class Experiment():
@@ -44,9 +44,9 @@ class Experiment():
             "agent_planning_costs": ndarray
         """
         # generate objects
-        env = self.Environment()
-        model = self.Model()
-        agent = self.Agent(model, self.agent_config)
+        self.env = env = self.Environment()
+        self.model = model = self.Model()
+        self.agent = agent = self.Agent(model, self.agent_config)
         # goal_trajectory = np.zeros(
         #    (self.experiment_length+1, model.state_size+model.action_size))
 
@@ -72,10 +72,10 @@ class Experiment():
             computation_time.append(iterationtime)
             _, r, done, _ = env.step(action)
 
-            print("==================")
-            print("Time Passed:", passedtime)
-            print("Iteration Time:", iterationtime)
-            print("Cost", -r)
+            # print("==================")
+            #print("Time Passed:", passedtime)
+            #print("Iteration Time:", iterationtime)
+            #print("Cost", -r)
 
         passedtime = np.around(passedtime, decimals=3)
         states = np.array([x for x in env.history["state"].to_numpy()])

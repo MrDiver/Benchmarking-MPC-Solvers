@@ -19,8 +19,7 @@ class CartPoleSwingUpModel(Model):
     action_size = 1
 
     def __init__(self):
-        super().__init__()
-        # TODO: maybe change rendering to use the model instead
+        super().__init__("CartpoleSwingUp Model (No Noise)")
         self.g = 9.82  # gravity
         self.m_c = 0.5  # cart mass
         self.m_p = 0.5  # pendulum mass

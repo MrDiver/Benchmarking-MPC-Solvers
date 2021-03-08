@@ -85,6 +85,7 @@ class AcrobotModel(Model):
     action_size = 1
 
     def __init__(self, torque_noise_max=0):
+        super().__init__("Acrobot Model (No Noise)")
         self.viewer = None
         self.state = None
         self.torque_noise_max = torque_noise_max

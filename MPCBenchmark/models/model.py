@@ -8,8 +8,9 @@ class Model:
     state_size = -1
     action_size = -1
 
-    def __init__(self) -> None:
+    def __init__(self, name="Base Model") -> None:
         super().__init__()
+        self.name = name
         self.last_reward = 0
         self.last_observation = None
         self.np_random, self._seed = seeding.np_random()
