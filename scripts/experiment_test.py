@@ -6,8 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 params_cem = {"K": 50, "T": 15, "max_iter": 5,
-              "n_elite": 5, "epsilon": 1e-5, "alpha": 0.2, "std": 1}
-params_mppi = {"K": 50, "T": 15, "std": 1, "lam": 0.1}
+              "n_elite": 20, "epsilon": 1e-5, "alpha": 0.2, "std": 1}
+params_mppi = {"K": 50, "T": 15, "std": 1, "lam": 0.8}
 params_ilqr = {"T": 15, "max_iter": 5, "threshold": 1e-5}
 
 
