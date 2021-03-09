@@ -7,12 +7,13 @@ import multiprocessing as mp
 
 class CEM(Agent):
     """
-    max_iter: maximal number of iterations
+    max_iter: maximum number of iterations
     n_samples: number of samples
     n_elites: number of top solution
     epsilon: minimum variance
     alpha: how much of the old mean and variance is used to compute a new mean and variance
     """
+    name = "CEM"
 
     def __init__(self, model: Model, params: dict, cores: int = 8) -> None:
         super().__init__("CEM", model)
@@ -28,6 +29,9 @@ class CEM(Agent):
             (self.horizon_length, self.action_size))*params["std"]
         self.planned_us = np.zeros((self.horizon_length, self.action_size))
         self.pool = mp.Pool(cores)
+
+    # def __del__(self):
+    #    self.pool.close()
 
     @staticmethod
     def f(model, state, sample, g_z):

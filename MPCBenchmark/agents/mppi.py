@@ -5,6 +5,8 @@ from multiprocessing import Pool
 
 
 class MPPI(Agent):
+    name = "MPPI"
+
     def __init__(self, model: Model, params: dict, cores=8) -> None:
         super().__init__("MPPI", model)
         self.K = params["K"]
@@ -20,6 +22,10 @@ class MPPI(Agent):
         self.sample_costs = np.zeros(self.K)
 
         self.pool = Pool(cores)
+
+    # def __del__(self):
+    #    print("Deleting MPPI")
+    #    self.pool.close()
 
     @staticmethod
     def f(model, state, planned_us, delta_us, g_z, horizon_length, lam, std):
@@ -41,7 +47,6 @@ class MPPI(Agent):
         return MPPI.f(*x)
 
     def _calc_action(self, x, g_z):
-
         _inputs = [(self.model, x, self.planned_us, self.delta_u[k], g_z,
                     self.horizon_length, self.lam, self.std) for k in range(self.K)]
         self.sample_costs = np.array(self.pool.map(MPPI.f_wrapper, _inputs))

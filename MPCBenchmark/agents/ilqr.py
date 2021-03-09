@@ -8,6 +8,8 @@ from multiprocessing import Pool, Queue, Process
 
 
 class ILQR(Agent):
+    name = "ILQR"
+
     def __init__(self, model, params, workers=8) -> None:
         super().__init__("ILQR", model)
         self.horizon_length = params["T"]
@@ -67,9 +69,9 @@ class ILQR(Agent):
             self.worker_list.append(w)
             w.start()
 
-    def __del__(self):
-        for w in self.worker_list:
-            w.join()
+    # def __del__(self):
+    #    for w in self.worker_list:
+    #        w.join()
 
     # , Jc, Jtc, Hc, Htc, Jd, Hd):
     def worker(self, request_queue, response_queue):
