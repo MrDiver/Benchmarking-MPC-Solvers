@@ -93,7 +93,6 @@ def plot_experiments(exps: [Experiment], figsize=(20, 20), plot_planning=False, 
     names = ""
     for exp in exps:
         names += exp.Agent.name + " "
-        print(names)
         states = exp.experiment_results["env_states"]
         actions = exp.experiment_results["env_actions"]
         costs = exp.experiment_results["env_costs"]
@@ -102,8 +101,7 @@ def plot_experiments(exps: [Experiment], figsize=(20, 20), plot_planning=False, 
         for i in range(exp.Model.state_size):
             solver_ax[i].plot(states[:, i], label=exp.Agent.name+" $x_" +
                               str(i)+"$", marker="o")
-            # solver_ax[i].plot(goal_state[:, i], linestyle=(
-            #    0, (5, 10)), color="tab:red", label="Goal $x_"+str(i)+"$")
+
             solver_ax[i].set_xlabel("Time s")
             solver_ax[i].set_ylabel("State")
 
@@ -130,34 +128,8 @@ def plot_experiments(exps: [Experiment], figsize=(20, 20), plot_planning=False, 
         solver_ax[-1].set_ylabel("Computation time")
         solver_ax[-1].grid(True)
 
-        # save plot without mpc information
         for ax_ in solver_ax:
             ax_.legend(loc="upper left")
-        # solver_fig.savefig(experiment_path+"/plots/S" +
-        #                   str(exp_num)+"_NoPlanning_"+solver.name+"_trajectory")
 
-        if plot_planning:
-            # Adding MPC information to the plots
-            mpc_xs = exp.experiment_results["agent_planning_states"]
-            mpc_us = exp.experiment_results["agent_planning_actions"]
-            # print(mpc_xs)
-            for start_iteration, planned_states in mpc_xs:
-                for i in range(exp.Model.state_size):
-                    solver_ax[i].plot(range(start_iteration, start_iteration + planned_states.shape[0]), planned_states[:, i],
-                                      alpha=0.7, linestyle=(0, (1, 1, 4, 1)), zorder=-1)  # ,label="$x_"+str(i)+"$",color="tab:orange")
-
-            for start_iteration, planned_actions in mpc_us:
-                for i in range(exp.Model.state_size, exp.Model.state_size+exp.Model.action_size):
-                    if len(actions.shape) <= 1:
-                        actions = actions[:, None]
-                    i_ = i-exp.Model.state_size
-                    solver_ax[i].plot(range(start_iteration, start_iteration + planned_actions.shape[0]), planned_actions[:, i_],
-                                      alpha=0.7, linestyle=(0, (1, 1, 4, 1)), zorder=-1)  # , label="$u_"+str(i_)+"$",color="tab:green")
-
-            # save plot with MPC information
-            # solver_fig.savefig(experiment_path+"/plots/S" +
-            #               str(exp_num)+"_Planning_"+solver.name+"_trajectory")
-
-    solver_ax[0].set_title(names)
     solver_fig.tight_layout()
     return solver_fig

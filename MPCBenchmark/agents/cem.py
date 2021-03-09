@@ -30,8 +30,12 @@ class CEM(Agent):
         self.planned_us = np.zeros((self.horizon_length, self.action_size))
         self.pool = mp.Pool(cores)
 
-    # def __del__(self):
-    #    self.pool.close()
+    def __del__(self):
+        print("deleting CEM")
+        self.close()
+
+    def close(self):
+        self.pool.close()
 
     @staticmethod
     def f(model, state, sample, g_z):

@@ -69,11 +69,15 @@ class ILQR(Agent):
             self.worker_list.append(w)
             w.start()
 
-    # def __del__(self):
-    #    for w in self.worker_list:
-    #        w.join()
+    def __del__(self):
+        print("Deleting ILQR")
+        self.close()
 
+    def close(self):
+        for w in self.worker_list:
+            w.join()
     # , Jc, Jtc, Hc, Htc, Jd, Hd):
+
     def worker(self, request_queue, response_queue):
         while True:
             task = request_queue.get()

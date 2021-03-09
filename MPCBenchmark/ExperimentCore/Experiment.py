@@ -88,6 +88,7 @@ class Experiment():
         exp_name = agent.name + " solving " + env.name + " with " + model.name + \
             "\n Starting from "+str(self.start_state) + \
             " Time: " + str(passedtime)
+        agent.close()
         self.experiment_results = {
             "name": exp_name,
             "computation_time": computation_time,

@@ -34,6 +34,7 @@ for T in [15, 30, 60, 100]:
                 experiments.append(exp)
                 quickplot(exp, False)
                 quickplot(exp, True)
+            print("Plot combined")
             comb_fig = Plot.plot_experiments(experiments)
             comb_fig.suptitle("T: "+str(T)+" K: "+str(K)+" in "+exp.model.name)
             comb_fig.tight_layout()

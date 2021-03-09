@@ -23,9 +23,12 @@ class MPPI(Agent):
 
         self.pool = Pool(cores)
 
-    # def __del__(self):
-    #    print("Deleting MPPI")
-    #    self.pool.close()
+    def __del__(self):
+        print("Deleting MPPI")
+        self.close()
+
+    def close(self):
+        self.pool.close()
 
     @staticmethod
     def f(model, state, planned_us, delta_us, g_z, horizon_length, lam, std):
@@ -34,12 +37,12 @@ class MPPI(Agent):
         sample = planned_us + delta_us
         for t in range(horizon_length):
             test_u = sample[t]  # self.planned_us[t]+self.delta_u[k, t]
-            #test_u = np.clip(test_u, self.bounds_low, self.bounds_high)
+            # test_u = np.clip(test_u, self.bounds_low, self.bounds_high)
             current_x = model.predict(current_x, test_u, goal=g_z)
             cost = -model.get_reward()
             sample_cost += cost + lam * \
                 test_u.T@np.linalg.pinv(std**2)@(delta_us[t])
-        #sample_costs += self.model._terminal_cost(current_x,g_z[:])
+        # sample_costs += self.model._terminal_cost(current_x,g_z[:])
         return sample_cost
 
     @staticmethod
@@ -50,7 +53,7 @@ class MPPI(Agent):
         _inputs = [(self.model, x, self.planned_us, self.delta_u[k], g_z,
                     self.horizon_length, self.lam, self.std) for k in range(self.K)]
         self.sample_costs = np.array(self.pool.map(MPPI.f_wrapper, _inputs))
-        #self.sample_costs = np.array([MPPI.f_wrapper(x) for x in _inputs])
+        # self.sample_costs = np.array([MPPI.f_wrapper(x) for x in _inputs])
         beta = self.sample_costs.min()
         tmp = np.exp(-(1/self.lam) * (self.sample_costs - beta))
         eta = np.sum(tmp)
