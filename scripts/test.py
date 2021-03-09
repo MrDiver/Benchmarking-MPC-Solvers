@@ -46,14 +46,14 @@ model: Model = ACMOD()
 # model = GEM(ENVIRONMENT)j
 
 
-params_cem = {"K": 50, "T": 15, "max_iter": 5,
+params_cem = {"K": 100, "T": 30, "max_iter": 10,
               "n_elite": 5, "epsilon": 1e-5, "alpha": 0.2, "instant_cost": (lambda x, u: 0), "std": 1}
 
-params_mppi = {"K": 50, "T": 15, "std": 1,
+params_mppi = {"K": 100, "T": 30, "std": 1,
                "terminal_cost": (lambda x: 0), "instant_cost": (lambda x, u: 0),
                "lam": 0.1}
 
-params_ilqr = {"T": 15, "max_iter": 5, "threshold": 1e-5}
+params_ilqr = {"T": 30, "max_iter": 10, "threshold": 1e-5}
 cem: CEM = CEM(model, params_cem)
 mppi: MPPI = MPPI(model, params_mppi)
 ilqr: ILQR = ILQR(model, params_ilqr)
@@ -99,7 +99,8 @@ for exp_num, reset_state in enumerate(experiment_states, start=1):
         currenttime = time.time()
 
         solver_fig = plt.figure(figsize=(20, 20))
-        solver_fig.suptitle("Test No."+str(exp_num))
+        solver_fig.suptitle(solver.name + " solving " +
+                            env.name + " with " + model.name)
         solver_ax = solver_fig.subplots(
             nrows=model.state_size+model.action_size+2)
 
@@ -216,7 +217,7 @@ for exp_num, reset_state in enumerate(experiment_states, start=1):
         for solver_ax in comb_ax:
             solver_ax.legend(loc="upper left")
             solver_ax.grid(True)
-        figcomb.suptitle("Test No."+str(exp_num) +
+        figcomb.suptitle("Solving with "+model.name +
                          " | initial state "+str(reset_state))
         figcomb.tight_layout()
         figcomb.savefig(experiment_path+"/plots/CombS"+str(exp_num)+"_results")

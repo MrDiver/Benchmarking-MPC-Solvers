@@ -41,4 +41,3 @@ for T in [15, 30, 60, 100]:
             comb_fig.savefig("experiments/paper/comb_"+str(T)+"_" +
                              str(K)+"_"+str(max_iter)+"_test")
             plt.close(comb_fig)
-plt.show()
