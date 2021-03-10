@@ -37,36 +37,39 @@ experiment_path = "experiments/"+timestring
 
 env: Environment = PENV()
 model: Model = PEMOD()
-env: Environment = CPSUENV()
-model: Model = CPSUMOD()
-#env: Environment = ACENV()
-#model: Model = ACMOD()
+#env: Environment = CPSUENV()
+#model: Model = CPSUMOD()
+env: Environment = ACENV()
+model: Model = ACMOD()
 
 #model: Model = DummyModel(4, 1)
 # model = GEM(ENVIRONMENT)j
 
+K = 50
+T = 20
+max_iter = 10
+params_cem = {"K": K, "T": T, "max_iter": max_iter,
+              "n_elite": 5, "epsilon": 1e-5, "alpha": 0.2, "std": 1}
 
-<<<<<<< HEAD
-params_cem = {"K": 200, "T": 60, "max_iter": 20,
-              "n_elite": 5, "epsilon": 1e-5, "alpha": 0.2, "instant_cost": (lambda x, u: 0), "std": 1}
+params_mppi = {"K": K, "T": T, "std": 1, "lam": 0.1}
+params_mppi2 = {"K": K, "T": T, "std": 1, "lam": 0.25}
+params_mppi3 = {"K": K, "T": T, "std": 1, "lam": 0.5}
+params_mppi4 = {"K": K, "T": T, "std": 1, "lam": 0.75}
+params_mppi5 = {"K": K, "T": T, "std": 1, "lam": 1.0}
 
-params_mppi = {"K": 200, "T": 60, "std": 1,
-               "terminal_cost": (lambda x: 0), "instant_cost": (lambda x, u: 0),
-               "lam": 0.1}
-
-params_ilqr = {"T": 60, "max_iter": 20, "threshold": 1e-5}
-=======
-params_cem = {"K": 50, "T": 15, "max_iter": 5,
-              "n_elite": 5, "epsilon": 1e-5, "alpha": 0.2, "instant_cost": (lambda x, u: 0), "std": 1}
-
-params_mppi = {"K": 50, "T": 15, "std": 1,
-               "terminal_cost": (lambda x: 0), "instant_cost": (lambda x, u: 0),
-               "lam": 0.1}
-
-params_ilqr = {"T": 15, "max_iter": 5, "threshold": 1e-5}
->>>>>>> bb72a72e60bb21e718fd574686a430fea700a3a0
+params_ilqr = {"T": T, "max_iter": max_iter, "threshold": 1e-5}
 cem: CEM = CEM(model, params_cem)
 mppi: MPPI = MPPI(model, params_mppi)
+mppi.name = "l=0,1"
+mppi2: MPPI = MPPI(model, params_mppi2)
+mppi2.name = "l=0,25"
+mppi3: MPPI = MPPI(model, params_mppi3)
+mppi3.name = "l=0,5"
+mppi4: MPPI = MPPI(model, params_mppi4)
+mppi4.name = "l=0,75"
+mppi5: MPPI = MPPI(model, params_mppi5)
+mppi5.name = "l=1,0"
+
 ilqr: ILQR = ILQR(model, params_ilqr)
 
 
@@ -78,12 +81,13 @@ experiment_states = [np.array([np.pi, 0]), np.array(
 experiment_states = [np.array([0, 0, np.pi, 0]), np.array(
     [0, 1, np.pi, 0]), np.array([0, 0, 0, 0]), np.array([0, 1, 0, 0])]
 
+solver_list = [mppi, mppi2, mppi3, mppi4, mppi5]
 
 for exp_num, reset_state in enumerate(experiment_states, start=1):
     figcomb = plt.figure(figsize=(30, 25))
     comb_ax = figcomb.subplots(nrows=model.state_size+model.action_size+1)
 
-    duration = 200
+    duration = 150
     goal_state = np.zeros((duration+1, model.state_size+model.action_size))
 
     if save_plots:
@@ -99,7 +103,7 @@ for exp_num, reset_state in enumerate(experiment_states, start=1):
             comb_ax[i].set_xlabel("Time s")
             comb_ax[i].set_ylabel("Action")
 
-    for solver in [cem, mppi, ilqr]:
+    for solver in solver_list:
         solver: Agent = solver
         # env.seed(seed)
         print("\n\n\n", solver.name, " now participates in Experiment No.", exp_num)
