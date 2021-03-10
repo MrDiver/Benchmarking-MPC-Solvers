@@ -46,14 +46,14 @@ model: Model = ACMOD()
 # model = GEM(ENVIRONMENT)j
 
 
-params_cem = {"K": 100, "T": 30, "max_iter": 10,
+params_cem = {"K": 200, "T": 60, "max_iter": 20,
               "n_elite": 5, "epsilon": 1e-5, "alpha": 0.2, "instant_cost": (lambda x, u: 0), "std": 1}
 
-params_mppi = {"K": 100, "T": 30, "std": 1,
+params_mppi = {"K": 200, "T": 60, "std": 1,
                "terminal_cost": (lambda x: 0), "instant_cost": (lambda x, u: 0),
                "lam": 0.1}
 
-params_ilqr = {"T": 30, "max_iter": 10, "threshold": 1e-5}
+params_ilqr = {"T": 60, "max_iter": 20, "threshold": 1e-5}
 cem: CEM = CEM(model, params_cem)
 mppi: MPPI = MPPI(model, params_mppi)
 ilqr: ILQR = ILQR(model, params_ilqr)
