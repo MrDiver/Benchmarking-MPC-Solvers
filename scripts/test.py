@@ -37,15 +37,16 @@ experiment_path = "experiments/"+timestring
 
 env: Environment = PENV()
 model: Model = PEMOD()
-# env: Environment = CPSUENV()
-# model: Model = CPSUMOD()
-env: Environment = ACENV()
-model: Model = ACMOD()
+env: Environment = CPSUENV()
+model: Model = CPSUMOD()
+#env: Environment = ACENV()
+#model: Model = ACMOD()
 
 #model: Model = DummyModel(4, 1)
 # model = GEM(ENVIRONMENT)j
 
 
+<<<<<<< HEAD
 params_cem = {"K": 200, "T": 60, "max_iter": 20,
               "n_elite": 5, "epsilon": 1e-5, "alpha": 0.2, "instant_cost": (lambda x, u: 0), "std": 1}
 
@@ -54,6 +55,16 @@ params_mppi = {"K": 200, "T": 60, "std": 1,
                "lam": 0.1}
 
 params_ilqr = {"T": 60, "max_iter": 20, "threshold": 1e-5}
+=======
+params_cem = {"K": 50, "T": 15, "max_iter": 5,
+              "n_elite": 5, "epsilon": 1e-5, "alpha": 0.2, "instant_cost": (lambda x, u: 0), "std": 1}
+
+params_mppi = {"K": 50, "T": 15, "std": 1,
+               "terminal_cost": (lambda x: 0), "instant_cost": (lambda x, u: 0),
+               "lam": 0.1}
+
+params_ilqr = {"T": 15, "max_iter": 5, "threshold": 1e-5}
+>>>>>>> bb72a72e60bb21e718fd574686a430fea700a3a0
 cem: CEM = CEM(model, params_cem)
 mppi: MPPI = MPPI(model, params_mppi)
 ilqr: ILQR = ILQR(model, params_ilqr)
