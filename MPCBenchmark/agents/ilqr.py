@@ -7,6 +7,42 @@ import os
 from multiprocessing import Pool, Queue, Process
 
 
+def worker(request_queue, response_queue, state_size, action_size, Jacobian_cost, Jacobian_dynamics, Hessian_cost):
+    def step_derive(xu_t, gz_t):
+        jac = Jacobian_cost(xu_t, gz_t)
+        hess = Hessian_cost(xu_t, gz_t)
+
+        l_x = jac[:, :state_size]
+        l_u = jac[:, state_size:]
+        l_xx = np.array([hess[i, i] for i in range(state_size)])
+        l_uu = np.array([hess[i, i] for i in range(
+            state_size, state_size + action_size)])
+        l_ux = np.array([hess[-1, i] for i in range(state_size)])
+
+        return l_x, l_u, l_xx, l_uu, l_ux
+
+    def step_derive_dynamics(xu_t):
+        jac = Jacobian_dynamics(xu_t)
+        # hess = self.Hessian_dynamics(xu_t) # doesnt work for some reason
+        f_x = jac[:, :state_size]
+        f_u = jac[:, state_size:]
+        return f_x, f_u
+
+    while True:
+        print("waiting for new item")
+        task = request_queue.get()
+        print("task", task)
+        if type(task) is bool:
+            print("Closed forcefully and exiting while loop good bye cruel world")
+            break
+        iteration, xu_t, gz_t = task
+        l_x, l_u, l_xx, l_uu, l_ux = step_derive(xu_t, gz_t)
+        f_x, f_u = step_derive_dynamics(xu_t)
+        response_queue.put(
+            (iteration, l_x, l_u, l_xx, l_uu, l_ux, f_x, f_u))
+
+    print("closed down worker")
+
 class ILQR(Agent):
     name = "ILQR"
 
@@ -63,29 +99,27 @@ class ILQR(Agent):
         self.worker_response: Queue = Queue(maxsize=self.horizon_length)
 
         for x in range(workers):
-            w = Process(target=self.worker, args=[
-                        self.worker_request, self.worker_response])
+            w = Process(target=worker, args=(self.worker_request, self.worker_response, self.state_size, self.action_size, self.Jacobian_cost, self.Jacobian_dynamics, self.Hessian_cost))
             # self.Jacobian_cost, self.Jacobian_terminal_cost, self.Hessian_cost, self.Hessian_terminal_cost, self.Jacobian_dynamics, self.Hessian_dynamics])
             self.worker_list.append(w)
             w.start()
 
     def __del__(self):
         print("Deleting ILQR")
+        for w in self.worker_list:
+            print("Put false")
+            self.worker_request.put(False)
+            print("putted false")
+        for w in self.worker_list:
+            print("Join worker",w)
+            w.join()
+            print("Joined worker",w)
         self.close()
+        print("Deleted ILQR")
 
     def close(self):
-        for w in self.worker_list:
-            w.join()
+        pass
     # , Jc, Jtc, Hc, Htc, Jd, Hd):
-
-    def worker(self, request_queue, response_queue):
-        while True:
-            task = request_queue.get()
-            iteration, xu_t, gz_t = task
-            l_x, l_u, l_xx, l_uu, l_ux = self.step_derive(xu_t, gz_t)
-            f_x, f_u = self.step_derive_dynamics(xu_t)
-            response_queue.put(
-                (iteration, l_x, l_u, l_xx, l_uu, l_ux, f_x, f_u))
 
     def _calc_action(self, x, g_z):
 
@@ -189,40 +223,6 @@ class ILQR(Agent):
     #
     ############################################################################
 
-    def step_derive(self, xu_t, gz_t):
-        # xu_t = xu[t]
-        # x_t = xs[t]
-        # gz_t = g_z[t]
-        jac = self.Jacobian_cost(xu_t, gz_t)  # doesnt work
-        # jac_t = self.Jacobian_terminal_cost(x_t, gz_t)
-        hess = self.Hessian_cost(xu_t, gz_t)
-        # hess_t = self.Hessian_terminal_cost(x_t, gz_t)
-
-        l_x = jac[:, :self.state_size]
-        l_u = jac[:, self.state_size:]
-        # this code is horrible but i know it
-        l_xx = np.array([hess[i, i] for i in range(self.state_size)])
-        l_uu = np.array([hess[i, i] for i in range(
-            self.state_size, self.state_size + self.action_size)])
-        l_ux = np.array([hess[-1, i] for i in range(self.state_size)])
-        # print("jac",jac)
-        # #print("jac_t",jac_t)
-        # print("hess",hess)
-        # #print("hess_t",hess_t)
-
-        # print("l_x",l_x)
-        # print("l_u",l_u)
-        # print("l_xx",l_xx)
-        # print("l_uu",l_uu)
-        # print("l_ux",l_ux)
-        return l_x, l_u, l_xx, l_uu, l_ux
-
-    def step_derive_dynamics(self, xu_t):
-        jac = self.Jacobian_dynamics(xu_t)
-        # hess = self.Hessian_dynamics(xu_t) # doesnt work for some reason
-        f_x = jac[:, :self.state_size]
-        f_u = jac[:, self.state_size:]
-        return f_x, f_u
 
     def derivatives(self, xs, us, g_z):
 

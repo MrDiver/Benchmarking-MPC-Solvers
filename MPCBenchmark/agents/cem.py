@@ -31,11 +31,14 @@ class CEM(Agent):
         self.pool = mp.Pool(cores)
 
     def __del__(self):
-        print("deleting CEM")
+        print("Deleting CEM")
+        self.pool.close()
+        self.pool.join()
         self.close()
+        print("Deleted CEM")
 
     def close(self):
-        self.pool.close()
+        pass
 
     @staticmethod
     def f(model, state, sample, g_z):

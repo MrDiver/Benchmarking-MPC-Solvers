@@ -81,13 +81,15 @@ experiment_states = [np.array([np.pi, 0]), np.array(
 experiment_states = [np.array([0, 0, np.pi, 0]), np.array(
     [0, 1, np.pi, 0]), np.array([0, 0, 0, 0]), np.array([0, 1, 0, 0])]
 
-solver_list = [mppi, mppi2, mppi3, mppi4, mppi5]
+experiment_states = [np.array([0, 1, 0, 0])]
+
+solver_list = [ilqr]
 
 for exp_num, reset_state in enumerate(experiment_states, start=1):
     figcomb = plt.figure(figsize=(30, 25))
     comb_ax = figcomb.subplots(nrows=model.state_size+model.action_size+1)
 
-    duration = 150
+    duration = 2
     goal_state = np.zeros((duration+1, model.state_size+model.action_size))
 
     if save_plots:
