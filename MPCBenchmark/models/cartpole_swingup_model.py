@@ -1,116 +1,115 @@
-from MPCBenchmark.models.model import Model as Model
+"""
+Cart pole swing-up: Original version from:
+https://github.com/zuoxingdong/DeepPILCO/blob/master/cartpole_swingup.py
 
+Modified so that done=True when x is outside of -2.4 to 2.4
+Reward is also reshaped to be similar to PyBullet/roboschool version
+
+More difficult, since dt is 0.05 (not 0.01), and only 200 timesteps
+"""
+from MPCBenchmark.models.model import Model
 import gym
 import numpy as np
-from collections import namedtuple
-from dataclasses import dataclass, field
 
 
-@dataclass(frozen=True)
-class CartParams:
-    """Parameters defining the Cart."""
+class CartPoleSwingUpModel(Model):
+    bounds_low = np.array([-1])
+    bounds_high = np.array([1])
+    state_size = 4
+    action_size = 1
 
-    width: float = 1 / 3
-    height: float = 1 / 6
-    mass: float = 0.5
+    def __init__(self):
+        super().__init__("CartpoleSwingUp Model (No Noise)")
+        self.g = 9.82  # gravity
+        self.m_c = 0.5  # cart mass
+        self.m_p = 0.5  # pendulum mass
+        self.total_m = (self.m_p + self.m_c)
+        self.l = 0.6  # pole's length
+        self.m_p_l = (self.m_p*self.l)
+        self.force_mag = 10.0
+        self.dt = 0.01  # seconds between state updates
+        self.b = 0.1  # friction coefficient
 
+        self.t = 0  # timestep
+        self.t_limit = 1000
 
-@dataclass(frozen=True)
-class PoleParams:
-    """Parameters defining the Pole."""
+        # Angle at which to fail the episode
+        self.theta_threshold_radians = 12 * 2 * np.pi / 360
+        self.x_threshold = 2.4
 
-    width: float = 0.05
-    length: float = 0.6
-    mass: float = 0.5
-
-
-
-
-State = namedtuple("State", "x_pos x_dot theta theta_dot")
-
-@dataclass
-class CartPoleSwingUpParams:  # pylint: disable=no-member,too-many-instance-attributes
-    """Parameters for physics simulation."""
-
-    gravity: float = 9.82
-    forcemag: float = 10.0
-    deltat: float = 0.01
-    friction: float = 0.1
-    x_threshold: float = 2.4
-    cart: CartParams = field(default_factory=CartParams)
-    pole: PoleParams = field(default_factory=PoleParams)
-    masstotal: float = field(init=False)
-    mpl: float = field(init=False)
-
-    def __post_init__(self):
-        self.masstotal = self.cart.mass + self.pole.mass
-        self.mpl = self.pole.mass * self.pole.length
-
-
-class CartpoleSwingupModel(Model):
-    def __init__(self,) -> None:
-        super().__init__()
-        self.low = -1.0
-        self.high = 1.0
-        self.params = CartPoleSwingUpParams()
         self.state = None
 
-    def _transition_fn(self, state, action):
-        # pylint: disable=no-member
-        action = action[0] * self.params.forcemag
+        self.last_reward = 0
+        self.last_observation = None
 
-        sin_theta = np.sin(state.theta)
-        cos_theta = np.cos(state.theta)
+        self.W = -np.diag([1, 0, 1, 0, 0])
+        self.W_t = -np.diag([5, 0, 1, 0, 0])
 
-        xdot_update = (
-            -2 * self.params.mpl * (state.theta_dot ** 2) * sin_theta
-            + 3 * self.params.pole.mass * self.params.gravity * sin_theta * cos_theta
-            + 4 * action
-            - 4 * self.params.friction * state.x_dot
-        ) / (4 * self.params.masstotal - 3 * self.params.pole.mass * cos_theta ** 2)
-        thetadot_update = (
-            -3 * self.params.mpl * (state.theta_dot ** 2) * sin_theta * cos_theta
-            + 6 * self.params.masstotal * self.params.gravity * sin_theta
-            + 6 * (action - self.params.friction * state.x_dot) * cos_theta
-        ) / (
-            4 * self.params.pole.length * self.params.masstotal
-            - 3 * self.params.mpl * cos_theta ** 2
-        )
+    def reset(self):
+        #self.state = self.np_random.normal(loc=np.array([0.0, 0.0, 30*(2*np.pi)/360, 0.0]), scale=np.array([0.0, 0.0, 0.0, 0.0]))
+        self.state = np.random.normal(loc=np.array(
+            [0.0, 0.0, np.pi, 0.0]), scale=np.array([0.2, 0.2, 0.2, 0.2]))
+        self.steps_beyond_done = None
+        return self.state
 
-        delta_t = self.params.deltat
-        return State(
-            x_pos=state.x_pos + state.x_dot * delta_t,
-            theta=state.theta + state.theta_dot * delta_t,
-            x_dot=state.x_dot + xdot_update * delta_t,
-            theta_dot=state.theta_dot + thetadot_update * delta_t,
-        )
+    def get_reward(self):
+        return self.last_reward
 
+    def get_observation(self):
+        return self.last_observation
 
-    @staticmethod
-    def _get_obs(state):
-        x_pos, x_dot, theta, theta_dot = state
-        return np.array(
-            [x_pos, x_dot, np.cos(theta), np.sin(theta), theta_dot], dtype=np.float32
-        )
+    # used for linearization algorithms to have access to the dynamics
 
-    @staticmethod
-    def _reward_fn(state, action, next_state):
-        return (1 + np.cos(next_state.theta, dtype=np.float32)) / 2
+    def _dynamics(self, x, u):
 
-    def _terminal(self, state):
-        return bool(abs(state.x_pos) > self.params.x_threshold)
+        action = np.clip(u, -1.0, 1.0)[:, 0]
+        action *= self.force_mag
 
-    def predict(self, current_state: np.ndarray, action: np.ndarray) -> np.ndarray:
-        # if(np.clip(action, self.bounds_low, self.bounds_high) != action):
-        #    print("RuntimeWarning: Actions out of action space for this model")
-        # Valid action
+        state = x
+        x, x_dot, theta, theta_dot = state[:, [
+            0]], state[:, [1]], state[:, [2]], state[:, [3]]
 
-        action = np.clip(action, self.low, self.high)
-        self.state = next_state = self._transition_fn(current_state, action)
-        self.last_observation = self._get_obs(next_state)
-        self.last_reward = self._reward_fn(current_state, action, next_state)
+        s = np.sin(theta)
+        c = np.cos(theta)
 
-        return next_state
+        xdot_update = (-2*self.m_p_l*(theta_dot**2)*s + 3*self.m_p*self.g *
+                       s*c + 4*action - 4*self.b*x_dot)/(4*self.total_m - 3*self.m_p*c**2)
+        thetadot_update = (-3*self.m_p_l*(theta_dot**2)*s*c + 6*self.total_m*self.g *
+                           s + 6*(action - self.b*x_dot)*c)/(4*self.l*self.total_m - 3*self.m_p_l*c**2)
+        x = x + x_dot*self.dt
+        theta = theta + theta_dot*self.dt
+        x_dot = x_dot + xdot_update*self.dt
+        theta_dot = theta_dot + thetadot_update*self.dt
+        newstate = np.append(
+            np.append(np.append(x, x_dot, axis=1), theta, axis=1), theta_dot, axis=1)
+        return newstate
 
-    def batch_predict(self, states: np.ndarray, actions: np.ndarray) -> np.ndarray:
-        raise NotImplementedError
+    def _transform(self, x, u):
+        xc, x_dot, theta, theta_dot = x[:, [
+            0]], x[:, [1]], x[:, [2]], x[:, [3]]
+
+        tmp = 1
+        if (xc > self.x_threshold).any() or (xc < -self.x_threshold).any():
+            tmp = -10000
+        xc = np.cos((xc/self.x_threshold)*(np.pi/2.0))
+        theta = np.cos(theta)+1.0
+        xc = xc * theta * tmp
+        theta = np.zeros_like(theta)
+        return np.append(np.append(np.append(np.append(xc, x_dot, axis=1), theta, axis=1), theta_dot, axis=1), u, axis=1)
+
+    def _state_cost(self, z, g_z):
+        #reward_theta = (np.cos(theta)+1.0)/2.0
+        #reward_x = np.cos((x/self.x_threshold)*(np.pi/2.0))
+
+        #reward = reward_theta*reward_x
+
+        _zd = z-g_z
+        #costs = [(z @ self.W) @ z.T for z in _zd]
+        costs = np.einsum("bi,ij,bj->b", _zd, self.W, _zd)
+        return costs
+
+    def _terminal_cost(self, x, g_x):
+        _zd = x-g_x
+
+        costs = np.einsum("bi,ij,bj->b", _zd, self.W_t, _zd)
+        return costs

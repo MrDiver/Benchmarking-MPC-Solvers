@@ -2,7 +2,7 @@ from setuptools import find_packages
 from setuptools import setup
 
 
-install_requires = ['numpy', 'matplotlib', 'gym', 'pandas', 'numdifftools']
+install_requires = ['numpy', 'matplotlib', 'gym', 'pandas', 'numdifftools', 'pymongo']
 #tests_require = ['pytest']
 #setup_requires = ["pytest-runner"]
 
