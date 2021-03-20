@@ -25,13 +25,12 @@ class MPPI(Agent):
 
     def __del__(self):
         print("Deleting MPPI")
-        self.pool.close()
-        self.pool.join()
         self.close()
         print("Deleted MPPI")
 
     def close(self):
-        pass
+        self.pool.close()
+        self.pool.join()
 
     @staticmethod
     def f(model, state, planned_us, delta_us, g_z, horizon_length, lam, std):

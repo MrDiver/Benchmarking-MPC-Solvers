@@ -7,7 +7,13 @@ import os
 from multiprocessing import Pool, Queue, Process
 
 
-def worker(request_queue, response_queue, state_size, action_size, Jacobian_cost, Jacobian_dynamics, Hessian_cost):
+worker_request: Queue = Queue()
+worker_response: Queue = Queue()
+
+def worker(state_size, action_size,c,f):
+    Jacobian_cost = nd.Jacobian(c)
+    Hessian_cost = nd.Hessian(c)
+    Jacobian_dynamics = nd.Jacobian(f)
     def step_derive(xu_t, gz_t):
         jac = Jacobian_cost(xu_t, gz_t)
         hess = Hessian_cost(xu_t, gz_t)
@@ -30,7 +36,7 @@ def worker(request_queue, response_queue, state_size, action_size, Jacobian_cost
 
     while True:
         print("waiting for new item")
-        task = request_queue.get()
+        task = worker_request.get()
         print("task", task)
         if type(task) is bool:
             print("Closed forcefully and exiting while loop good bye cruel world")
@@ -38,7 +44,7 @@ def worker(request_queue, response_queue, state_size, action_size, Jacobian_cost
         iteration, xu_t, gz_t = task
         l_x, l_u, l_xx, l_uu, l_ux = step_derive(xu_t, gz_t)
         f_x, f_u = step_derive_dynamics(xu_t)
-        response_queue.put(
+        worker_response.put(
             (iteration, l_x, l_u, l_xx, l_uu, l_ux, f_x, f_u))
 
     print("closed down worker")
@@ -95,29 +101,27 @@ class ILQR(Agent):
         self.save_plots = False
 
         self.worker_list = []
-        self.worker_request: Queue = Queue(maxsize=self.horizon_length)
-        self.worker_response: Queue = Queue(maxsize=self.horizon_length)
 
         for x in range(workers):
-            w = Process(target=worker, args=(self.worker_request, self.worker_response, self.state_size, self.action_size, self.Jacobian_cost, self.Jacobian_dynamics, self.Hessian_cost))
+            w = Process(target=worker, args=(self.state_size, self.action_size, c, f))
             # self.Jacobian_cost, self.Jacobian_terminal_cost, self.Hessian_cost, self.Hessian_terminal_cost, self.Jacobian_dynamics, self.Hessian_dynamics])
             self.worker_list.append(w)
             w.start()
 
     def __del__(self):
         print("Deleting ILQR")
+        # self.close()
+        print("Deleted ILQR")
+
+    def close(self):
         for w in self.worker_list:
             print("Put false")
-            self.worker_request.put(False)
+            worker_request.put(False)
             print("putted false")
         for w in self.worker_list:
             print("Join worker",w)
             w.join()
             print("Joined worker",w)
-        self.close()
-        print("Deleted ILQR")
-
-    def close(self):
         pass
     # , Jc, Jtc, Hc, Htc, Jd, Hd):
 
@@ -240,10 +244,10 @@ class ILQR(Agent):
             (self.horizon_length, self.state_size, self.action_size))
 
         for t in range(self.horizon_length):
-            self.worker_request.put((t, xu[t], g_z[t]))
+            worker_request.put((t, xu[t], g_z[t]))
 
         for _ in range(self.horizon_length):
-            response = self.worker_response.get()
+            response = worker_response.get()
             t = response[0]
             l_x, l_u, l_xx, l_uu, l_ux, f_x, f_u = response[1:]
             l_xs[t, :] = l_x
