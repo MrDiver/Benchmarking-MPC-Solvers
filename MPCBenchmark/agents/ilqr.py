@@ -35,19 +35,14 @@ def worker(state_size, action_size,c,f):
         return f_x, f_u
 
     while True:
-        print("waiting for new item")
         task = worker_request.get()
-        print("task", task)
         if type(task) is bool:
-            print("Closed forcefully and exiting while loop good bye cruel world")
             break
         iteration, xu_t, gz_t = task
         l_x, l_u, l_xx, l_uu, l_ux = step_derive(xu_t, gz_t)
         f_x, f_u = step_derive_dynamics(xu_t)
         worker_response.put(
             (iteration, l_x, l_u, l_xx, l_uu, l_ux, f_x, f_u))
-
-    print("closed down worker")
 
 class ILQR(Agent):
     name = "ILQR"
@@ -57,6 +52,7 @@ class ILQR(Agent):
         self.horizon_length = params["T"]
         self.max_iter = params["max_iter"]
         self.threshold = params["threshold"]
+        self.closed_loop = params["closed_loop"]
 
         def c(xu, g_z):
             xu = xu[np.newaxis, :]
@@ -109,19 +105,13 @@ class ILQR(Agent):
             w.start()
 
     def __del__(self):
-        print("Deleting ILQR")
-        # self.close()
         print("Deleted ILQR")
 
     def close(self):
         for w in self.worker_list:
-            print("Put false")
             worker_request.put(False)
-            print("putted false")
         for w in self.worker_list:
-            print("Join worker",w)
             w.join()
-            print("Joined worker",w)
         pass
     # , Jc, Jtc, Hc, Htc, Jd, Hd):
 
@@ -134,10 +124,7 @@ class ILQR(Agent):
         accepted_solution = False
 
         for iter in range(self.max_iter):
-            # print("Iteration",iter)
             xs, cost = self.simulate_trajectory(x, us, g_z)
-            # print("Cost:",cost)
-            # print("Mu:",self.mu)
             l_x, l_u, l_xx, l_uu, l_ux, f_x, f_u = lfs = self.derivatives(
                 xs[:-1], us, g_z)
             k, K = self.backward_pass(l_x, l_u, l_xx, l_uu, l_ux, f_x, f_u)
@@ -306,6 +293,9 @@ class ILQR(Agent):
         Q_uu = l_uu + f_u.T @ (V_xx + self.mu * np.eye(self.state_size)) @ f_u
         # + V_x @ f_ux # 10b
         Q_ux = l_ux + f_u.T @ (V_xx + self.mu * np.eye(self.state_size)) @ f_x
+        # if self.closed_loop:
+        #     Q_uu += V_x @ f_uu # 10a
+        #     Q_ux += V_x @ f_ux # 10b
 
         return Q_x, Q_u, Q_xx, Q_uu, Q_ux
 

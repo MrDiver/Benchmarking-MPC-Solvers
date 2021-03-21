@@ -8,6 +8,7 @@ class Agent:
         super().__init__()
         self.bounds_low = model.bounds_low
         self.bounds_high = model.bounds_high
+        self.horizon_length = -1
         if model.state_size == -1 or model.action_size == -1:
             raise Exception("Given Model not fully implemented Error")
         self.state_size = model.state_size
@@ -23,6 +24,30 @@ class Agent:
         self.planning_action_history = []
         self.planning_costs_history = []
         self.step_iteration_variable = 0
+        self.warmstart = False
+        self.warmstart_trajectories = []
+
+    def warm_start(self, state, no_iterations=50, g_z=None, goal_state=None):
+        self.warmstart = True
+        # Setting up g_z
+        goal_state = np.array([goal_state])
+        if g_z is None:
+            if goal_state is None:
+                raise AttributeError(
+                    "goal_state can't be null if no target trajectory g_z is given!")
+            g_z = np.repeat(goal_state, self.horizon_length, axis=0)
+        elif len(np.array(g_z).shape) <= 1:
+            raise AttributeError("g_z can't be 1-Dimensional")
+        g_z = np.array(g_z)
+        # end
+
+        for i in range(no_iterations):
+            self._calc_action(state, g_z)
+            self.planned_us = np.clip(
+                self.planned_us, self.bounds_low, self.bounds_high)
+            self.warmstart_trajectories.append(self.planned_us)
+
+
 
     def predict_action(self, state, g_z=None, goal_state=None):
         # Setting up g_z

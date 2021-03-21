@@ -2,3 +2,5 @@ matplotlib
 gym
 numpy
 pymongo
+dnspython
+numdifftools

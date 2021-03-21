@@ -4,7 +4,9 @@ from MPCBenchmark.models import Model, PendulumModel, CartPoleSwingUpModel, Acro
 from MPCBenchmark.ExperimentCore import Experiment, Plot
 import numpy as np
 import matplotlib.pyplot as plt
+from pymongo import MongoClient
 
+client = MongoClient("localhost", 27017)
 
 def quickplot(exp, planning=False):
     fig = Plot.plot_experiment(exp, plot_planning=planning)
@@ -24,20 +26,21 @@ for T in [2]:
             params_cem = {"K": K, "T": T, "max_iter": max_iter,
                           "n_elite": 20, "epsilon": 1e-5, "alpha": 0.2, "std": 1}
             params_mppi = {"K": K, "T": T, "std": 1, "lam": 0.1}
-            params_ilqr = {"T": T, "max_iter": max_iter, "threshold": 1e-5}
+            params_ilqr = {"T": T, "max_iter": max_iter, "threshold": 1e-5, "closed_loop":False}
             experiments = []
-            for agent, agent_config in [(CEM,params_cem),(MPPI,params_mppi),(ILQR, params_ilqr)]:
+            for agent, agent_config in [(CEM, params_cem), (MPPI, params_mppi), (ILQR, params_ilqr)]:
                 config = {"env": PendulumEnv, "model": PendulumModel, "agent": agent,
                           "agent_config": agent_config, "experiment_length": 100, "start_state": np.array([np.pi, 0])}
                 exp = Experiment(config)
-                result = exp()
+                result = exp(50)
+                print(result)
                 experiments.append(exp)
-                quickplot(exp, False)
-                quickplot(exp, True)
-            print("Plot combined")
-            comb_fig = Plot.plot_experiments(experiments)
-            comb_fig.suptitle("T: "+str(T)+" K: "+str(K)+" in "+exp.model.name)
-            comb_fig.tight_layout()
-            comb_fig.savefig("experiments/paper/comb_"+str(T)+"_" +
-                             str(K)+"_"+str(max_iter)+"_test")
-            plt.close(comb_fig)
+                # quickplot(exp, False)
+                # quickplot(exp, True)
+            # print("Plot combined")
+            # comb_fig = Plot.plot_experiments(experiments)
+            # comb_fig.suptitle("T: "+str(T)+" K: "+str(K)+" in "+exp.model.name)
+            # comb_fig.tight_layout()
+            # comb_fig.savefig("experiments/paper/comb_"+str(T)+"_" +
+            #                  str(K)+"_"+str(max_iter)+"_test")
+            # plt.close(comb_fig)
