@@ -3,6 +3,7 @@ import pickle
 from bson.binary import Binary
 import datetime
 
+
 def encodeDict(dict):
     prepared = {}
     for key, value in dict.items():
@@ -13,10 +14,12 @@ def encodeDict(dict):
     prepared["date"] = datetime.datetime.now()
     return prepared
 
+
 def decodeDict(dict):
     prepared = {}
     for key, value in dict.items():
-        if type(value) == Binary:
+        if type(value) == bytes:
             prepared[key] = pickle.loads(value)
         else:
             prepared[key] = value
+    return prepared
