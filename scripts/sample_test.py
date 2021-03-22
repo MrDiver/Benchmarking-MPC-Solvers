@@ -8,14 +8,14 @@ from pymongo import MongoClient
 
 
 def generate_data():
-    client = MongoClient("localhost", 27017)
+    client = MongoClient("192.168.0.101", 27017)
     db = client.parameter_tuning
     cem_ratio_collection = db.cem_ratios
     mppi_sample_collection = db.mppi_samples
 
 
-    env_configs = [(PendulumEnv, PendulumModel, np.array([[np.pi, 0]])),
-                   (CartPoleSwingUpEnv, CartPoleSwingUpModel, np.array([[0, 0, np.pi, 0]])),
+    env_configs = [#(PendulumEnv, PendulumModel, np.array([[np.pi, 0]])),
+                   #(CartPoleSwingUpEnv, CartPoleSwingUpModel, np.array([[0, 0, np.pi, 0]])),
                    (AcrobotEnv, AcrobotModel, np.array([[0, 0, 0, 0]]))]
 
 
