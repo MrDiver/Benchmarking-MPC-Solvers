@@ -33,8 +33,15 @@ def generate_data():
 
 
 def generate_plots():
-    plt.rcParams.update({'font.size': 10, 'text.usetex': False})
-    client = MongoClient("192.168.0.101", 27017)
+    import matplotlib
+    matplotlib.rcParams['font.family'] = 'serif'
+    matplotlib.rcParams['figure.figsize'] = [20, 12]
+    matplotlib.rcParams['legend.fontsize'] = 16
+    matplotlib.rcParams['axes.titlesize'] = 22
+    matplotlib.rcParams['axes.labelsize'] = 22
+
+    alpha_val = 0.2
+    client = MongoClient("localhost", 27017)
     db = client.parameter_tuning
     collection = db.temperature_exp
     for env, statesize in [("PendulumEnvironment", 2), ("CartpoleSwingupEnvironment", 4), ("AcrobotEnvironment", 4)]:
@@ -48,13 +55,19 @@ def generate_plots():
         ls = [0.001, 0.01, 0.1, 0.5, 1, 10]
         Ts = [5, 10, 25, 50]
 
-        T_perf = []
+        T_perf_median = []
+        T_perf_25th = []
+        T_perf_75th = []
+        T_perf_ratios = []
         print(env)
 
         for T in Ts:
-            fig_exp = plt.figure(figsize=(20, 12))
+            fig_exp = plt.figure()
             ax_exp = fig_exp.subplots(nrows=statesize+2)
-            lam_perf = []
+            lam_perf_median = []
+            lam_perf_25th = []
+            lam_perf_75th = []
+            lam_ratios = []
             for l in ls:
                 query = {"agent_config.T": T,
                          "agent_config.lam": l, "env_name": env}
@@ -67,61 +80,72 @@ def generate_plots():
                     actions.append(tmp["env_actions"])
                     costs.append(tmp["env_costs"])
                     # pprint.pprint(tmp["name"])
+                costs = np.clip(costs, 0, 20)
                 state_mean = np.mean(states, axis=0)
                 state_std = np.std(states, axis=0)
                 action_mean = np.mean(actions, axis=0)
                 action_std = np.std(actions, axis=0)
-                cost_mean = np.mean(costs, axis=0)
-                cost_std = np.std(actions, axis=0)
+                cost_median = np.median(costs, axis=0)
+                cost_25th = np.quantile(costs, 0.25, axis=0).flatten()
+                cost_75th = np.quantile(costs, 0.75, axis=0).flatten()
                 horizon_length = state_mean.shape[0]
                 statesize = state_mean.shape[1]
                 actionsize = action_mean.shape[1]
 
                 #Add to list
-                lam_perf.append(cost_mean.sum())
+                tmp_sum = np.sum(costs, axis=1)
+                lam_perf_median.append(np.median(tmp_sum, axis=0))
+                lam_perf_25th.append(np.quantile(tmp_sum, 0.25, axis=0))
+                lam_perf_75th.append(np.quantile(tmp_sum, 0.75, axis=0))
                 # print(state_mean)
-                fig = plt.figure(figsize=(20, 12))
+                fig = plt.figure()
                 ax = fig.subplots(nrows=statesize+actionsize+1)
 
                 low = state_mean-2*state_std
                 high = state_mean+2*state_std
                 #plot states
+                ratio = np.round(l/np.mean(costs), 4)
+                lam_ratios.append(ratio)
+                label_l = "l="+str(l) + " r="+str(ratio)
                 for i in range(statesize):
                     ax[i].fill_between(range(horizon_length),
-                                       low[:, i], high[:, i], alpha=0.5, label="l="+str(l))
-                    ax[i].plot(range(horizon_length), state_mean[:, i], label="l="+str(l))
+                                       low[:, i], high[:, i], alpha=alpha_val, label=label_l)
+                    ax[i].plot(range(horizon_length), state_mean[:, i], label=label_l)
                     ax[i].set_ylabel("x_"+str(i))
                     for traj in states:
                         ax[i].plot(range(horizon_length),
-                                   traj[:, i], alpha=0.2)
+                                   traj[:, i], alpha=alpha_val)
 
                     ax_exp[i].fill_between(range(horizon_length),
-                                           low[:, i], high[:, i], alpha=0.2)
+                                           low[:, i], high[:, i], alpha=alpha_val)
                     ax_exp[i].plot(range(horizon_length),
-                                   state_mean[:, i], label="l="+str(l))
+                                   state_mean[:, i], label=label_l)
                     ax_exp[i].set_ylabel("x_" + str(i))
 
                 low = action_mean-2*action_std
                 high = action_mean+2*action_std
                 for i, j in enumerate(range(statesize, statesize+actionsize)):
                     ax[j].fill_between(range(horizon_length),
-                                       low[:, i], high[:, i], alpha=0.2)
-                    ax[j].plot(range(horizon_length), action_mean[:, i], label="l="+str(l))
+                                       low[:, i], high[:, i], alpha=alpha_val)
+                    ax[j].plot(range(horizon_length), action_mean[:, i], label=label_l)
                     ax[j].set_ylabel("u_"+str(i))
                     ax_exp[j].fill_between(range(horizon_length),
-                                       low[:, i], high[:, i], alpha=0.2)
-                    ax_exp[j].plot(range(horizon_length), action_mean[:, i], label="l=" + str(l))
+                                       low[:, i], high[:, i], alpha=alpha_val)
+                    ax_exp[j].plot(range(horizon_length), action_mean[:, i], label=label_l)
                     ax_exp[j].set_ylabel("u_" + str(i))
 
-                low = cost_mean - 2*cost_std.flatten()
-                high = cost_mean + 2*cost_std.flatten()
+                low = cost_25th
+                high = cost_75th
                 ax[-1].fill_between(range(horizon_length),
-                                    low, high, alpha=0.5)
-                ax[-1].plot(cost_mean, label="l=" + str(l))
-
+                                    low, high, alpha=alpha_val)
+                ax[-1].plot(cost_median, label=label_l)
+                ax[-1].set_ylabel("Costs")
+                ax[-1].set_xlabel("Time - t")
                 ax_exp[-1].fill_between(range(horizon_length),
-                                    low, high, alpha=0.5)
-                ax_exp[-1].plot(cost_mean, label="l=" + str(l))
+                                    low, high, alpha=alpha_val)
+                ax_exp[-1].plot(cost_median, label=label_l)
+                ax_exp[-1].set_ylabel("Costs")
+                ax_exp[-1].set_xlabel("Time - t")
 
                 for ax in ax:
                     ax.legend(loc="upper left")
@@ -131,27 +155,43 @@ def generate_plots():
 
                 plt.savefig("paper/mppi_temperature/"+env+"/"+str(T)+"_mppi_l"+str(l).replace(".", "_")+".png")
                 plt.close(fig)
-            T_perf.append(lam_perf)
+            T_perf_median.append(lam_perf_median)
+            T_perf_25th.append(lam_perf_25th)
+            T_perf_75th.append(lam_perf_75th)
+            T_perf_ratios.append(lam_ratios)
 
             fig_exp.suptitle("MPPI Temperature "+env +
                              " T:"+str(T))
             [tmp.legend(loc="upper left") for tmp in ax_exp]
             fig_exp.tight_layout()
-            plt.savefig("paper/mppi_temperature/"+env+"/"+str(T)+"_mppi_combined.png")
+            fig_exp.savefig("paper/mppi_temperature/"+env+"/combined"+str(T)+"_mppi.png")
+            # extent = ax_exp[-1].get_window_extent().transformed(fig_exp.dpi_scale_trans.inverted())
+            # fig_exp.savefig("paper/mppi_temperature/"+env+"/"+str(T)+"_mppi_combined_cost_only.png", bbox_inches=extent.expanded(1.1, 1.2))
             plt.close(fig_exp)
 
-        T_perf = np.array(T_perf)
-        fig_perf = plt.figure(figsize=(20, 12))
+        T_perf_median = np.array(T_perf_median)
+        T_perf_25th = np.array(T_perf_25th)
+        T_perf_75th = np.array(T_perf_75th)
+        T_perf_ratios = np.array(T_perf_ratios)
+        ratios = np.round(np.mean(T_perf_ratios,axis=0),4)
+        print("25", T_perf_25th.T)
+        print("50", T_perf_median.T)
+        print("75", T_perf_75th.T)
+        fig_perf = plt.figure()
         ax_perf = fig_perf.add_subplot()
         for i in range(len(ls)):
-            ax_perf.plot(Ts, T_perf[:, i], label="l "+str(ls[i]))
+            ax_perf.plot(Ts, T_perf_median[:, i], label="l="+str(ls[i]) + " r="+str(ratios[i]))
+            low = T_perf_25th[:, i]
+            high =T_perf_75th[:, i]
+            ax_perf.fill_between(Ts,low,high,alpha=alpha_val)
         fig_perf.suptitle("MPPI Temperature Summary "+env)
-        fig_perf.savefig("paper/mppi_temperature/"+env+"/mppi_summary.png")
         ax_perf.set_xticks(Ts)
         ax_perf.set_xlabel("Horizon Length - T")
         ax_perf.set_ylabel("Performance Cost")
         ax_perf.legend(loc="upper left")
+        ax_perf.grid()
         plt.show()
+        fig_perf.savefig("paper/mppi_temperature/"+env+"_mppi_summary.png")
         plt.close(fig_perf)
     print("Done")
 

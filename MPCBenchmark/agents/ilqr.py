@@ -47,7 +47,7 @@ def worker(state_size, action_size,c,f):
 class ILQR(Agent):
     name = "ILQR"
 
-    def __init__(self, model, params, workers=8) -> None:
+    def __init__(self, model, params, cores=8) -> None:
         super().__init__("ILQR", model)
         self.horizon_length = params["T"]
         self.max_iter = params["max_iter"]
@@ -98,7 +98,7 @@ class ILQR(Agent):
 
         self.worker_list = []
 
-        for x in range(workers):
+        for x in range(cores):
             w = Process(target=worker, args=(self.state_size, self.action_size, c, f))
             # self.Jacobian_cost, self.Jacobian_terminal_cost, self.Hessian_cost, self.Hessian_terminal_cost, self.Jacobian_dynamics, self.Hessian_dynamics])
             self.worker_list.append(w)

@@ -74,7 +74,7 @@ class Experiment():
             iterationtime = np.around(iterationtime, decimals=3)
             computation_time.append(iterationtime)
             _, r, done, _ = env.step(action)
-
+            #env.render()
             print("==================")
             print("Solver:", agent.name)
             print("Config:", self.agent_config.get(
