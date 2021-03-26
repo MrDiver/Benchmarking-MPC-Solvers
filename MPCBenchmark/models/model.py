@@ -41,7 +41,7 @@ class Model:
         newstate = newstate[0]
         if self.sensor_noise:
             newstate += np.random.normal(0, self.sensor_std, self.state_size)
-        return newstate[0]
+        return newstate
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)

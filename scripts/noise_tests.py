@@ -15,19 +15,21 @@ def generate_data():
     collection = db.noise_tests
 
     env_configs = [(PendulumEnv, PendulumModel, np.array([[np.pi, 0]]), 0.5, 0.5, 5),
-                   (CartPoleSwingUpEnv, CartPoleSwingUpModel, 50,
-                    np.array([[0, 0, np.pi, 0]]), 0.1, 0.1, 5),
-                   (AcrobotEnv, AcrobotModel, np.array([[0, 0, 0, 0]]), 0.5, 0.1, 25)]
+                   # (CartPoleSwingUpEnv, CartPoleSwingUpModel, 50,
+                   # np.array([[0, 0, np.pi, 0]]), 0.1, 0.1, 5),
+                   # (AcrobotEnv, AcrobotModel, np.array([[0, 0, 0, 0]]), 0.5, 0.1, 25)
+                   ]
 
     for env, model, start_states, temp, ratio, max_iter in env_configs:
         for start_state in start_states:
             for T in [5, 10, 25, 50]:
-                solver_configs = [(CEM, {"K": 50, "T": T, "max_iter": 10, "n_elite": 50*ratio, "epsilon": 1e-5, "alpha": 0.2, "std": 1}),
+                solver_configs = [(CEM, {"K": 50, "T": T, "max_iter": 10, "n_elite": int(50*ratio), "epsilon": 1e-5, "alpha": 0.2, "std": 1}),
                                   (MPPI, {"K": 50, "T": T,
                                           "std": 1, "lam": temp}),
                                   (ILQR, {"T": T, "max_iter": max_iter, "threshold": 1e-7, "closed_loop": False})]
                 for solver, solver_config in solver_configs:
                     for actuation_noise in [0.1, 0.5, 1]:
+                        print("Actuation", actuation_noise)
                         config = {"env": env, "model": model, "agent": solver,
                                   "agent_config": solver_config, "experiment_length": 100, "start_state": start_state, "actuation_noise": actuation_noise}
                         for i in range(5):
@@ -36,6 +38,7 @@ def generate_data():
                             prepared = DBTools.encodeDict(result)
                             collection.insert_one(prepared)
                     for sensor_noise in [0.1, 0.5, 1]:
+                        print("Sensor", sensor_noise)
                         config = {"env": env, "model": model, "agent": solver,
                                   "agent_config": solver_config, "experiment_length": 100, "start_state": start_state, "sensor_noise": sensor_noise, "model_noise": True}
                         for i in range(5):

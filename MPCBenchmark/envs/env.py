@@ -9,7 +9,7 @@ class Environment:
         self.name = "BaseEnvironment" if name is None else name
         self.history = None
         self.true_state = None
-        self.true_state
+        self.state = None
         self.observation = None
         self.model: Model = None
         self.history = pd.DataFrame()
@@ -34,21 +34,23 @@ class Environment:
 
     def step(self, u):
         self.last_u = true_u = u
+        print("u", u)
         if self.actuation_noise:
-            u += self.random.normal(0, self.actuation_noise_std,
-                                    self.model.action_size)
+            u += np.random.normal(0, self.actuation_noise_std,
+                                  self.model.action_size)
+        print("u_noise", u)
         # for rendering
         self.true_state = self.model.predict(self.true_state, u)
         self.state = self.true_state + \
-            np.random.normal(
-                0, self.sensor_noise_std, self.model.state_size) if self.sensor_noise else 0
+            (np.random.normal(
+                0, self.sensor_noise_std, self.model.state_size) if self.sensor_noise else 0)
         costs = -self.model.get_reward()
         self.history = self.history.append(
             {"state": self.state, "true_state": self.true_state, "action": u, "true_action": true_u, "cost": costs}, ignore_index=True)
         return self.true_state, -costs, self._done(), {}
 
     def reset(self, state=None):
-        self.true_state = self.model.np_random.uniform(
+        self.true_state = self.state = self.model.np_random.uniform(
             low=-np.ones(self.model.state_size)*self.model.bounds_low, high=np.ones(self.model.state_size)*self.model.bounds_high)
         if state is not None:
             self.true_state = state.copy()

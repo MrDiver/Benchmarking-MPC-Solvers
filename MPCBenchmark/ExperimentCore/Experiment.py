@@ -28,7 +28,7 @@ class Experiment():
         self.actuation_noise = self.actuation_noise_std > 0
         self.sensor_noise_std = params.get("sensor_noise", 0)
         self.sensor_noise = self.sensor_noise_std > 0
-        self.model_is_noised = self.get("model_noise", False)
+        self.model_is_noised = params.get("model_noise", False)
         self.experiment_results = None
         # still not working correctly
         # self.goal_trajectory: np.ndarray = params["goal_trajectory"]
