@@ -47,8 +47,6 @@ class Agent:
                 self.planned_us, self.bounds_low, self.bounds_high)
             self.warmstart_trajectories.append(self.planned_us)
 
-
-
     def predict_action(self, state, g_z=None, goal_state=None):
         # Setting up g_z
         goal_state = np.array([goal_state])

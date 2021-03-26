@@ -57,7 +57,8 @@ params_mppi3 = {"K": K, "T": T, "std": 1, "lam": 0.5}
 params_mppi4 = {"K": K, "T": T, "std": 1, "lam": 0.75}
 params_mppi5 = {"K": K, "T": T, "std": 1, "lam": 1.0}
 
-params_ilqr = {"T": T, "max_iter": max_iter, "threshold": 1e-5, "closed_loop": False}
+params_ilqr = {"T": T, "max_iter": max_iter,
+               "threshold": 1e-5, "closed_loop": False}
 cem: CEM = CEM(model, params_cem)
 mppi: MPPI = MPPI(model, params_mppi)
 mppi.name = "l=0,1"
@@ -124,7 +125,7 @@ for exp_num, reset_state in enumerate(experiment_states, start=1):
         computation_time = []
         for i in range(duration):
             action = solver.predict_action(
-                env.state, goal_state=np.zeros(model.state_size+model.action_size))
+                env.true_state, goal_state=np.zeros(model.state_size+model.action_size))
             # newstate = model2.predict(env.state, action)
             # print(newstate)
             _, r, done, _ = env.step(action)
