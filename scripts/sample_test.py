@@ -63,7 +63,7 @@ def generate_plots():
     matplotlib.rcParams['axes.labelsize'] = 22
 
     alpha_val = 0.2
-    client = MongoClient("localhost", 27017)
+    client = MongoClient("192.168.0.101", 27017)
     db = client.parameter_tuning
     cem_ratio_collection = db.cem_ratios
     mppi_sample_collection = db.mppi_samples
@@ -72,11 +72,11 @@ def generate_plots():
     Ks = [10, 20, 50, 100, 200]
     ratios = [0.1, 0.25, 0.5, 0.75, 1]
 
-    generate_single_exps = True
-    generate_combined_exps = True
-    generate_summaries = True
-    generate_cem = False
-    generate_mppi = True
+    generate_single_exps = False
+    generate_combined_exps = False
+    generate_summaries = False
+    generate_cem = True
+    generate_mppi = False
 
     if generate_cem:
         for env, statesize in [("PendulumEnvironment", 2), ("CartpoleSwingupEnvironment", 4), ("AcrobotEnvironment", 4)]:
@@ -106,7 +106,7 @@ def generate_plots():
                     ratio_perf_median = []
                     ratio_perf_25th = []
                     ratio_perf_75th = []
-                    fig_exp = plt.figure(figsize)
+                    fig_exp = plt.figure()
                     ax_exp = fig_exp.subplots(nrows=statesize + 2)
                     for ratio in ratios:
                         query = {"agent_config.T": T,
@@ -140,7 +140,7 @@ def generate_plots():
                         ratio_perf_75th.append(np.quantile(tmp_sum, 0.75, axis=0))
 
                         # Plot the experiments for the given T,K,ratio
-                        fig = plt.figure(figsize)
+                        fig = plt.figure()
                         ax = fig.subplots(nrows=statesize + actionsize + 1)
 
                         low = state_mean - 2 * state_std
@@ -229,7 +229,7 @@ def generate_plots():
                 T_perf_75th.append(K_perf_75th)
 
                 if generate_summaries:
-                    fig_perf = plt.figure(figsize)
+                    fig_perf = plt.figure()
                     ax_perf = fig_perf.add_subplot()
                     for i in range(len(ratios)):
                         ax_perf.plot(Ks, K_perf_median[:, i], label=" r=" + str(ratios[i]))
@@ -250,7 +250,7 @@ def generate_plots():
             T_perf_25th = np.mean(T_perf_25th, axis=0)
             T_perf_75th = np.mean(T_perf_75th, axis=0)
 
-            fig_perf = plt.figure(figsize)
+            fig_perf = plt.figure()
             ax_perf = fig_perf.add_subplot()
             for i in range(len(ratios)-1):
                 ax_perf.plot(Ks, T_perf_median[:, i], label=" r=" + str(ratios[i]))
@@ -266,6 +266,83 @@ def generate_plots():
             plt.show()
             fig_perf.savefig("paper/cem_ratio/Final_" + env + "_cem_summary.png")
             plt.close(fig_perf)
+
+        """
+        =============================================
+
+                Cem Ratio Test Plot Generation
+
+        =============================================
+        """
+        for env, statesize in [("PendulumEnvironment", 2), ("CartpoleSwingupEnvironment", 4),
+                               ("AcrobotEnvironment", 4)]:
+
+            T_perf_median = []
+            T_perf_25th = []
+            T_perf_75th = []
+            for T in Ts:
+                ratio_perf_median = []
+                ratio_perf_25th = []
+                ratio_perf_75th = []
+                fig_exp = plt.figure()
+                ax_exp = fig_exp.subplots(nrows=statesize + 2)
+                for ratio in ratios:
+                    query = {"agent_config.T": T, "ratio": ratio, "env_name": env}
+
+                    states = []
+                    actions = []
+                    costs = []
+                    for result in cem_ratio_collection.find(query):
+                        tmp = DBTools.decodeDict(result)
+                        states.append(tmp["env_states"])
+                        actions.append(tmp["env_actions"])
+                        costs.append(tmp["env_costs"])
+                        # print(tmp["name"])
+                    costs = np.clip(costs, 0, 20)
+                    state_mean = np.mean(states, axis=0)
+                    state_std = np.std(states, axis=0)
+                    action_mean = np.mean(actions, axis=0)
+                    action_std = np.std(actions, axis=0)
+                    cost_median = np.median(costs, axis=0)
+                    cost_25th = np.quantile(costs, 0.25, axis=0).flatten()
+                    cost_75th = np.quantile(costs, 0.75, axis=0).flatten()
+                    horizon_length = state_mean.shape[0]
+                    statesize = state_mean.shape[1]
+                    actionsize = action_mean.shape[1]
+
+                    # add to list
+                    tmp_sum = np.sum(costs, axis=1)
+                    ratio_perf_median.append(np.median(tmp_sum, axis=0))
+                    ratio_perf_25th.append(np.quantile(tmp_sum, 0.25, axis=0))
+                    ratio_perf_75th.append(np.quantile(tmp_sum, 0.75, axis=0))
+
+                T_perf_median.append(ratio_perf_median)
+                T_perf_25th.append(ratio_perf_25th)
+                T_perf_75th.append(ratio_perf_75th)
+
+            T_perf_median = np.array(T_perf_median)
+            T_perf_25th = np.array(T_perf_25th)
+            T_perf_75th = np.array(T_perf_75th)
+
+            fig_perf = plt.figure()
+            ax_perf = fig_perf.add_subplot()
+            for i in range(len(ratios)):
+                ax_perf.plot(Ts, T_perf_median[:, i], label=" r=" + str(ratios[i]))
+                low = T_perf_25th[:, i]
+                high = T_perf_75th[:, i]
+                ax_perf.fill_between(Ts, low, high, alpha=alpha_val)
+            fig_perf.suptitle("CEM Ratios Summary " + env + " averaged over Sample size")
+            ax_perf.set_xticks(Ts)
+            ax_perf.set_xlabel("Time Horizon - T")
+            ax_perf.set_ylabel("Performance Cost")
+            ax_perf.legend(loc="upper left")
+            ax_perf.grid()
+            plt.show()
+            fig_perf.savefig("paper/cem_ratio/TimeHorizon_" + env + "_cem_summary.png")
+            plt.close(fig_perf)
+
+
+
 
         """
         =============================================

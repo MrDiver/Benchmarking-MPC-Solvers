@@ -10,10 +10,11 @@ from multiprocessing import Pool, Queue, Process
 worker_request: Queue = Queue()
 worker_response: Queue = Queue()
 
-def worker(state_size, action_size,c,f):
+def worker(state_size, action_size,c,f, closed_loop=False):
     Jacobian_cost = nd.Jacobian(c)
     Hessian_cost = nd.Hessian(c)
     Jacobian_dynamics = nd.Jacobian(f)
+
     def step_derive(xu_t, gz_t):
         jac = Jacobian_cost(xu_t, gz_t)
         hess = Hessian_cost(xu_t, gz_t)
@@ -29,7 +30,6 @@ def worker(state_size, action_size,c,f):
 
     def step_derive_dynamics(xu_t):
         jac = Jacobian_dynamics(xu_t)
-        # hess = self.Hessian_dynamics(xu_t) # doesnt work for some reason
         f_x = jac[:, :state_size]
         f_u = jac[:, state_size:]
         return f_x, f_u
@@ -88,9 +88,10 @@ class ILQR(Agent):
         self.Hessian_dynamics = nd.Hessian(f)
 
         self.planned_us = np.random.normal(
-            0, 0.1, (self.horizon_length, self.action_size))
+            0, self.bounds_high, (self.horizon_length, self.action_size))
         self.init_mu = 1
         self.mu_min = 1e-6
+        self.mu_max = 1024
         self.delta_zero = 2
         self.init_delta = self.delta_zero
         self.alphas = 1.1**(-np.arange(10)**2)
@@ -115,7 +116,7 @@ class ILQR(Agent):
         pass
     # , Jc, Jtc, Hc, Htc, Jd, Hd):
 
-    def _calc_action(self, x, g_z):
+    def _calc_action(self, x, g_z=None):
 
         self.mu = self.init_mu
         self.delta = self.init_delta
@@ -124,14 +125,18 @@ class ILQR(Agent):
         accepted_solution = False
 
         for iter in range(self.max_iter):
+            print(iter)
+            self.mu = np.clip(self.mu, self.mu_min, self.mu_max)
+            print(self.mu)
             xs, cost = self.simulate_trajectory(x, us, g_z)
             l_x, l_u, l_xx, l_uu, l_ux, f_x, f_u = lfs = self.derivatives(
                 xs[:-1], us, g_z)
-            k, K = self.backward_pass(l_x, l_u, l_xx, l_uu, l_ux, f_x, f_u)
+            k, K, working = self.backward_pass(l_x, l_u, l_xx, l_uu, l_ux, f_x, f_u)
             # check if backward pass failed
-            if False:
+            if not working:
                 self.delta = max(self.delta_zero, self.delta*self.delta_zero)
                 self.mu = max(self.mu_min, self.mu*self.delta)
+                print("backward pass failed")
                 continue
             # end check
 
@@ -179,13 +184,11 @@ class ILQR(Agent):
                     plt.close(fig)
                     alpha_iteration += 1
                 # check if forward pass has diverged
+                # print(new_cost, cost)
+                # print("COST THINGY", np.abs((cost - new_cost) / cost))
+
                 if new_cost < cost:
                     # check of 13
-                    # print("COST THINGY",np.abs((cost - new_cost) / cost))
-                    if np.abs((cost - new_cost) / cost) < self.threshold:
-                        converged_sol = True
-                        print("Solution Converged")
-                        break
 
                     cost = new_cost
                     xs = new_xs.copy()
@@ -197,6 +200,10 @@ class ILQR(Agent):
                     self.mu = 0 if self.mu*self.delta < self.mu_min else self.mu*self.delta
 
                     accepted_solution = True
+                if np.abs((cost - new_cost) / cost) < self.threshold:
+                    converged_sol = True
+                    print("Solution Converged")
+                    break
 
             if not accepted_solution:
                 self.delta = max(self.delta_zero, self.delta*self.delta_zero)
@@ -308,8 +315,12 @@ class ILQR(Agent):
         Ks = np.zeros((self.horizon_length, self.action_size, self.state_size))
 
         for t in range(self.horizon_length-1, -1, -1):
-            Q_x, Q_u, Q_xx, Q_uu, Q_ux = self._Q(
-                l_x[t], l_u[t], l_xx[None, t], l_uu[None, t], l_ux[None, t], f_x[t], f_u[t], V_x, V_xx)
+            working = True
+            try:
+                Q_x, Q_u, Q_xx, Q_uu, Q_ux = self._Q(
+                    l_x[t], l_u[t], l_xx[None, t], l_uu[None, t], l_ux[None, t], f_x[t], f_u[t], V_x, V_xx)
+            except:
+                return 0, 0, False
             ks[t] = k = -Q_uu**-1 @ Q_u  # 10c
             Ks[t] = K = -Q_uu**-1 @ Q_ux  # 10d
 
@@ -319,7 +330,7 @@ class ILQR(Agent):
 
             V_xx = 0.5 * (V_xx + V_xx.T)
 
-        return ks, Ks
+        return ks, Ks, True
 
     ############################################################################
     #
