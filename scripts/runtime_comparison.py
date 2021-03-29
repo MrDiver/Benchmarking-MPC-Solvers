@@ -18,7 +18,7 @@ def generate_plots():
     matplotlib.rcParams['axes.labelsize'] = 22
 
     alpha_val = 0.2
-    client = MongoClient("192.168.0.101", 27017)
+    client = MongoClient("localhost", 27017)
     db = client.parameter_tuning
     collections = [db.cem_ratios, db.ilqr_runs2, db.mppi_samples, db.temperature_exp]
 
@@ -34,7 +34,10 @@ def generate_plots():
         ax = fig.subplots(2,2)
         ax = ax.flatten()
 
-
+        def normalize(x):
+            minval = np.min(x)
+            maxval = np.max(x)
+            return (x-minval)/maxval
         for solver in ["CEM","MPPI","ILQR"]:
             for i,T in enumerate([5,10,25,50]):
                 times = []

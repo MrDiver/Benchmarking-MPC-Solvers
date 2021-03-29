@@ -17,7 +17,7 @@ def highlight_max_value(series):    # get True, or False status of each value in
 
 
 def generate_tables():
-    client = MongoClient("192.168.0.101", 27017)
+    client = MongoClient("localhost", 27017)
     db = client.parameter_tuning
     collections = [db.cem_ratios, db.ilqr_runs2, db.mppi_samples, db.temperature_exp]
     pd.set_option('display.float_format', '{:.2g}'.format)
@@ -100,7 +100,7 @@ def generate_tables():
 
         # Generate Sample Tables
         df = pd.DataFrame()
-        K = [10, 20, 50, 200 , 500]
+        K = [10, 20, 50, 200, 500]
         for i, K in enumerate(K):
             for solver in ["CEM", "MPPI"]:
                 if solver == "CEM" and K == 500:

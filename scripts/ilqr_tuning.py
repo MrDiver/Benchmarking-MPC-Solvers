@@ -9,7 +9,7 @@ import os
 import pprint
 
 def generate_data():
-    client = MongoClient("192.168.0.101", 27017)
+    client = MongoClient("localhost", 27017)
     db = client.parameter_tuning
     collection = db.ilqr_runs2
 
@@ -42,7 +42,7 @@ def generate_plots():
     matplotlib.rcParams['axes.labelsize'] = 22
 
     alpha_val = 0.2
-    client = MongoClient("192.168.0.101", 27017)
+    client = MongoClient("localhost", 27017)
     db = client.parameter_tuning
     collection = db.ilqr_runs2
     for env, statesize in [("PendulumEnvironment", 2), ("CartpoleSwingupEnvironment", 4), ("AcrobotEnvironment", 4)]:

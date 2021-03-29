@@ -58,7 +58,7 @@ def generate_plots():
     matplotlib.rcParams['axes.labelsize'] = 22
 
     alpha_val = 0.2
-    client = MongoClient("192.168.0.101", 27017)
+    client = MongoClient("localhost", 27017)
     db = client.parameter_tuning
     collection = db.noise_tests
     true_collections = [db.cem_ratios, db.ilqr_runs2, db.mppi_samples, db.temperature_exp]
