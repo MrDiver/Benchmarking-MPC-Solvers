@@ -14,6 +14,14 @@ class Model:
         self.last_reward = 0
         self.last_observation = None
         self.np_random, self._seed = seeding.np_random()
+        self.sensor_noise = False
+        self.sensor_std = 0
+
+    def set_sensor_noise(self, sensor_std):
+        self.sensor_noise = True
+        self.sensor_std = sensor_std
+        self.name = self.name.replace(
+            "No Noise", "With Noise std="+str(sensor_std))
 
     def predict(self, current_state: np.ndarray, action: np.ndarray, goal=None) -> np.ndarray:
         current_state = current_state.reshape(1, -1)
@@ -30,7 +38,10 @@ class Model:
         self.last_reward = -costs[0]
         self.last_observation = newstate[0]
         self.last_u = action[0]
-        return newstate[0]
+        newstate = newstate[0]
+        if self.sensor_noise:
+            newstate += np.random.normal(0, self.sensor_std, self.state_size)
+        return newstate
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)

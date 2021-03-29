@@ -27,7 +27,7 @@ class CartPoleSwingUpModel(Model):
         self.l = 0.6  # pole's length
         self.m_p_l = (self.m_p*self.l)
         self.force_mag = 10.0
-        self.dt = 0.01  # seconds between state updates
+        self.dt = 0.05  # seconds between state updates
         self.b = 0.1  # friction coefficient
 
         self.t = 0  # timestep
@@ -42,8 +42,8 @@ class CartPoleSwingUpModel(Model):
         self.last_reward = 0
         self.last_observation = None
 
-        self.W = -np.diag([1, 0, 1, 0, 0])
-        self.W_t = -np.diag([5, 0, 1, 0, 0])
+        self.W = -np.diag([1, 0, 5, 0, 0])
+        self.W_t = -np.diag([5, 0, 10, 0, 0])
 
     def reset(self):
         #self.state = self.np_random.normal(loc=np.array([0.0, 0.0, 30*(2*np.pi)/360, 0.0]), scale=np.array([0.0, 0.0, 0.0, 0.0]))
@@ -88,13 +88,8 @@ class CartPoleSwingUpModel(Model):
         xc, x_dot, theta, theta_dot = x[:, [
             0]], x[:, [1]], x[:, [2]], x[:, [3]]
 
-        tmp = 1
-        if (xc > self.x_threshold).any() or (xc < -self.x_threshold).any():
-            tmp = -10000
-        xc = np.cos((xc/self.x_threshold)*(np.pi/2.0))
-        theta = np.cos(theta)+1.0
-        xc = xc * theta * tmp
-        theta = np.zeros_like(theta)
+        xc = (xc/self.x_threshold)**2 + (xc/self.x_threshold)**10
+        theta = 1-np.cos(theta)
         return np.append(np.append(np.append(np.append(xc, x_dot, axis=1), theta, axis=1), theta_dot, axis=1), u, axis=1)
 
     def _state_cost(self, z, g_z):
@@ -106,7 +101,7 @@ class CartPoleSwingUpModel(Model):
         _zd = z-g_z
         #costs = [(z @ self.W) @ z.T for z in _zd]
         costs = np.einsum("bi,ij,bj->b", _zd, self.W, _zd)
-        return costs
+        return -costs
 
     def _terminal_cost(self, x, g_x):
         _zd = x-g_x

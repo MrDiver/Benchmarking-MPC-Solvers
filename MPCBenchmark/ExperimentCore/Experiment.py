@@ -24,11 +24,16 @@ class Experiment():
         self.agent_config: dict = params["agent_config"]
         self.experiment_length: int = params["experiment_length"]
         self.start_state: np.ndarray = params["start_state"]
+        self.actuation_noise_std = params.get("actuation_noise", 0)
+        self.actuation_noise = self.actuation_noise_std > 0
+        self.sensor_noise_std = params.get("sensor_noise", 0)
+        self.sensor_noise = self.sensor_noise_std > 0
+        self.model_is_noised = params.get("model_noise", False)
         self.experiment_results = None
         # still not working correctly
         # self.goal_trajectory: np.ndarray = params["goal_trajectory"]
 
-    def run(self):
+    def run(self, warmstart=None):
         """Runs the Experiment
 
         Returns:
@@ -45,14 +50,26 @@ class Experiment():
         """
         # generate objects
         self.env = env = self.Environment()
+        if self.sensor_noise:
+            self.env.set_sensor_noise(self.sensor_noise_std)
+        if self.actuation_noise:
+            self.env.set_actuation_noise(self.actuation_noise_std)
+
         self.model = model = self.Model()
-        agent = self.Agent(model, self.agent_config)
+        if self.model_is_noised:
+            self.model.set_sensor_noise(self.sensor_noise_std)
+
+        agent = self.Agent(model, self.agent_config, cores=12)
         # goal_trajectory = np.zeros(
         #    (self.experiment_length+1, model.state_size+model.action_size))
 
         # reset
         env.reset(self.start_state)
         agent.reset()
+
+        if warmstart is not None:
+            agent.warm_start(env.true_state, warmstart, goal_state=np.zeros(
+                model.state_size + model.action_size))
 
         starttime = time.time()
         passedtime = 0
@@ -62,7 +79,7 @@ class Experiment():
         for i in range(self.experiment_length):
             currenttime = time.time()
             action = agent.predict_action(
-                env.state, goal_state=np.zeros(model.state_size+model.action_size))
+                env.state, goal_state=np.zeros(model.state_size + model.action_size))
             # newstate = model2.predict(env.state, action)
             # print(newstate)
             iterationtime = time.time() - currenttime
@@ -71,7 +88,7 @@ class Experiment():
             iterationtime = np.around(iterationtime, decimals=3)
             computation_time.append(iterationtime)
             _, r, done, _ = env.step(action)
-
+            # env.render()
             print("==================")
             print("Solver:", agent.name)
             print("Config:", self.agent_config.get(
@@ -86,23 +103,44 @@ class Experiment():
         costs = np.array([x for x in env.history["cost"].to_numpy()])
 
         exp_name = agent.name + " solving " + env.name + " with " + model.name + \
-            "\n Starting from "+str(self.start_state) + \
+            "\n Starting from " + str(self.start_state) + \
             " Time: " + str(passedtime)
         agent.close()
         self.experiment_results = {
             "name": exp_name,
             "computation_time": computation_time,
             "passed_time": passedtime,
+            "warmstart": agent.warmstart,
+            "warmstart_trajectories": np.concatenate(agent.warmstart_trajectories, axis=0),
+            "env_name": env.name,
+            "model_name": model.name,
+            "agent_name": agent.name,
+            "agent_config": self.agent_config,
+            "env_start_state": self.start_state.tolist(),
             "env_states": states,
             "env_actions": actions,
             "env_costs": costs,
-            "agent_planning_states": agent.planning_state_history,
-            "agent_planning_actions": agent.planning_action_history,
+            "actuation_noise": self.actuation_noise,
+            "sensor_noise": self.sensor_noise,
+            "model_noise": self.model_is_noised,
+            "agent_planning_states": np.concatenate(agent.planning_state_history, axis=0),
+            "agent_planning_actions": np.concatenate(agent.planning_action_history, axis=0),
             "agent_planning_costs": agent.planning_costs_history}
+
+        if self.sensor_noise:
+            true_states = np.array(
+                [x for x in env.history["state"].to_numpy()])
+            self.experiment_results["env_true_states"] = true_states
+            self.experiment_results["sensor_noise_std"] = self.sensor_noise_std
+        if self.actuation_noise:
+            true_actions = np.array(
+                [x for x in env.history["action"].to_numpy()]) if self.actuation_noise else []
+            self.experiment_results["env_true_actions"] = true_actions
+            self.experiment_results["actuation_noise_std"] = self.actuation_noise_std
 
         return self.experiment_results
 
-    def __call__(self):
+    def __call__(self, warmstart=None):
         """Runs the run Method of the experiment class
 
         Returns:
@@ -117,4 +155,4 @@ class Experiment():
             "agent_planning_actions": ndarray
             "agent_planning_costs": ndarray
         """
-        return self.run()
+        return self.run(warmstart=warmstart)

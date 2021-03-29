@@ -37,16 +37,16 @@ experiment_path = "experiments/"+timestring
 
 env: Environment = PENV()
 model: Model = PEMOD()
-#env: Environment = CPSUENV()
-#model: Model = CPSUMOD()
-env: Environment = ACENV()
-model: Model = ACMOD()
+env: Environment = CPSUENV()
+model: Model = CPSUMOD()
+#env: Environment = ACENV()
+#model: Model = ACMOD()
 
 #model: Model = DummyModel(4, 1)
 # model = GEM(ENVIRONMENT)j
 
-K = 50
-T = 20
+K = 100
+T = 15
 max_iter = 10
 params_cem = {"K": K, "T": T, "max_iter": max_iter,
               "n_elite": 5, "epsilon": 1e-5, "alpha": 0.2, "std": 1}
@@ -57,7 +57,8 @@ params_mppi3 = {"K": K, "T": T, "std": 1, "lam": 0.5}
 params_mppi4 = {"K": K, "T": T, "std": 1, "lam": 0.75}
 params_mppi5 = {"K": K, "T": T, "std": 1, "lam": 1.0}
 
-params_ilqr = {"T": T, "max_iter": max_iter, "threshold": 1e-5}
+params_ilqr = {"T": T, "max_iter": max_iter,
+               "threshold": 1e-5, "closed_loop": False}
 cem: CEM = CEM(model, params_cem)
 mppi: MPPI = MPPI(model, params_mppi)
 mppi.name = "l=0,1"
@@ -73,7 +74,7 @@ mppi5.name = "l=1,0"
 ilqr: ILQR = ILQR(model, params_ilqr)
 
 
-save_plots = True
+save_plots = False
 
 experiment_states = [np.array([np.pi, 0]), np.array(
     [np.pi, 1]), np.array([0, 0]), np.array([np.pi/2, 0])]
@@ -81,15 +82,15 @@ experiment_states = [np.array([np.pi, 0]), np.array(
 experiment_states = [np.array([0, 0, np.pi, 0]), np.array(
     [0, 1, np.pi, 0]), np.array([0, 0, 0, 0]), np.array([0, 1, 0, 0])]
 
-experiment_states = [np.array([0, 1, 0, 0])]
+experiment_states = [np.array([0, 0, np.pi, 0])]
 
-solver_list = [ilqr]
+solver_list = [mppi4]
 
 for exp_num, reset_state in enumerate(experiment_states, start=1):
     figcomb = plt.figure(figsize=(30, 25))
     comb_ax = figcomb.subplots(nrows=model.state_size+model.action_size+1)
 
-    duration = 2
+    duration = 100
     goal_state = np.zeros((duration+1, model.state_size+model.action_size))
 
     if save_plots:
@@ -124,7 +125,7 @@ for exp_num, reset_state in enumerate(experiment_states, start=1):
         computation_time = []
         for i in range(duration):
             action = solver.predict_action(
-                env.state, goal_state=np.zeros(model.state_size+model.action_size))
+                env.true_state, goal_state=np.zeros(model.state_size+model.action_size))
             # newstate = model2.predict(env.state, action)
             # print(newstate)
             _, r, done, _ = env.step(action)

@@ -24,8 +24,8 @@ class MPPI(Agent):
         self.pool = Pool(cores)
 
     def __del__(self):
-        print("Deleting MPPI")
-        self.close()
+        # print("Deleting MPPI")
+        # self.close()
         print("Deleted MPPI")
 
     def close(self):

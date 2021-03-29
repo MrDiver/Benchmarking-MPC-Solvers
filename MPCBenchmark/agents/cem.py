@@ -31,8 +31,8 @@ class CEM(Agent):
         self.pool = mp.Pool(cores)
 
     def __del__(self):
-        print("Deleting CEM")
-        self.close()
+        # print("Deleting CEM")
+        # self.close()
         print("Deleted CEM")
 
     def close(self):
@@ -51,7 +51,7 @@ class CEM(Agent):
     def f_wrapper(x):
         return CEM.f(*x)
 
-    def _calc_action(self, x, g_z):
+    def _calc_action(self, x, g_z=None):
 
         std = self.std.copy()
         for _ in range(self.max_iter):
