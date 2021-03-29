@@ -36,11 +36,11 @@ class AcrobotModel(Model):
     The action is either applying +1, 0 or -1 torque on the joint between
     the two pendulum links.
     .. note::
-        The dynamics equations were missing some terms in the NIPS paper which
+        The dynamics equations were missing some terms in the NIPS ResultPlots which
         are present in the book. R. Sutton confirmed in personal correspondence
-        that the experimental results shown in the paper and the book were
+        that the experimental results shown in the ResultPlots and the book were
         generated with the equations shown in the book.
-        However, there is the option to run the domain with the paper equations
+        However, there is the option to run the domain with the ResultPlots equations
         by setting book_or_nips = 'nips'
     **REFERENCE:**
     .. seealso::
@@ -74,7 +74,7 @@ class AcrobotModel(Model):
 
     torque_noise_max = 0.
 
-    #: use dynamics equations from the nips paper or the book
+    #: use dynamics equations from the nips ResultPlots or the book
     book_or_nips = "book"
     action_arrow = None
     domain_fig = None
@@ -120,7 +120,7 @@ class AcrobotModel(Model):
             + (m1 * lc1 + m2 * l1) * g * cos(theta1 - pi / 2) + phi2
         if self.book_or_nips == "nips":
             # the following line is consistent with the description in the
-            # paper
+            # ResultPlots
             ddtheta2 = (a + d2 / d1 * phi1 - phi2) / \
                 (m2 * lc2 ** 2 + I2 - d2 ** 2 / d1)
         else:

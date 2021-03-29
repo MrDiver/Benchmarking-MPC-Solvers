@@ -15,7 +15,7 @@ def quickplot(exp, planning=False):
     fig.suptitle(title+" "+exp.experiment_results["name"])
     fig.tight_layout()
     addon = "_planning"if planning else "_no_planning"
-    fig.savefig("experiments/paper/"+str(T)+"_" +
+    fig.savefig("experiments/ResultPlots/"+str(T)+"_" +
                 str(K)+"_"+str(max_iter)+"_"+exp.Agent.name+"_test"+addon+".png")
     plt.close(fig)
 
@@ -41,6 +41,6 @@ for T in [50]:
             # comb_fig = Plot.plot_experiments(experiments)
             # comb_fig.suptitle("T: "+str(T)+" K: "+str(K)+" in "+exp.model.name)
             # comb_fig.tight_layout()
-            # comb_fig.savefig("experiments/paper/comb_"+str(T)+"_" +
+            # comb_fig.savefig("experiments/ResultPlots/comb_"+str(T)+"_" +
             #                  str(K)+"_"+str(max_iter)+"_test")
             # plt.close(comb_fig)

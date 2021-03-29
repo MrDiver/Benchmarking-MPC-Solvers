@@ -1,0 +1,25 @@
+\documentclass[]{standalone}
+\usepackage{booktabs}
+\usepackage[table,xcdraw]{xcolor}
+\begin{document}
+\begin{tabular}{llrrrrrr}
+\toprule
+   &      &  Average $(1 \times 10^2) $ &  Median $(1 \times 10^2) $ &  Min $(1 \times 10^2) $ &  Q 25 $(1 \times 10^2) $ &  Q 75 $(1 \times 10^2) $ &  Time $(1 \times 10^2) $ \\
+T & Solver &                             &                            &                         &                          &                          &                          \\
+\midrule
+5  & CEM &                          10 &                        8.9 &                     2.9 &                      8.5 &                       13 &                       20 \\
+   & ILQR &                          13 &                         13 &                      13 &                       13 &                       13 &                       10 \\
+   & MPPI &                          10 &                         10 &                     4.8 &                        9 &                       12 &                      1.8 \\
+10 & CEM &                         5.4 &                        3.4 &                     1.3 &                      2.8 &                        4 &                       35 \\
+   & ILQR &                          10 &                        8.8 &                     7.1 &                      7.6 &                       12 &                      9.3 \\
+   & MPPI &                         2.9 &                        2.5 &                     1.4 &                      2.4 &                      3.5 &                      3.2 \\
+25 & CEM &                         5.3 &                        2.7 &                     1.4 &                      2.3 &                      4.5 &                       78 \\
+   & ILQR &                         6.5 &                        6.3 &                     5.5 &                      5.8 &                      7.3 &                       18 \\
+   & MPPI &                         2.6 &                        2.3 &                     1.3 &                      1.9 &                      3.3 &                      7.6 \\
+50 & CEM &                         6.4 &                        4.4 &                     2.5 &                      2.8 &                        8 &                  1.5e+02 \\
+   & ILQR &                         6.1 &                        6.3 &                     3.4 &                      4.9 &                      7.1 &                       48 \\
+   & MPPI &                         4.6 &                        4.4 &                     2.6 &                      3.6 &                      4.9 &                       15 \\
+\bottomrule
+\end{tabular}
+
+\end{document}

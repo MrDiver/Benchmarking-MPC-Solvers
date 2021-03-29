@@ -45,12 +45,12 @@ def generate_plots():
     db = client.parameter_tuning
     collection = db.temperature_exp
     for env, statesize in [("PendulumEnvironment", 2), ("CartpoleSwingupEnvironment", 4), ("AcrobotEnvironment", 4)]:
-        if not os.path.exists("paper"):
-            os.mkdir("paper")
-        if not os.path.exists("paper/mppi_temperature"):
-            os.mkdir("paper/mppi_temperature")
-        if not os.path.exists("paper/mppi_temperature/" + env):
-            os.mkdir("paper/mppi_temperature/" + env)
+        if not os.path.exists("../ResultPlots"):
+            os.mkdir("../ResultPlots")
+        if not os.path.exists("../ResultPlots/mppi_temperature"):
+            os.mkdir("../ResultPlots/mppi_temperature")
+        if not os.path.exists("ResultPlots/mppi_temperature/" + env):
+            os.mkdir("ResultPlots/mppi_temperature/" + env)
 
         ls = [0.001, 0.01, 0.1, 0.5, 1, 10]
         Ts = [5, 10, 25, 50]
@@ -153,7 +153,7 @@ def generate_plots():
                              " T:"+str(T)+" lambda:"+str(l))
                 fig.tight_layout()
 
-                plt.savefig("paper/mppi_temperature/"+env+"/"+str(T)+"_mppi_l"+str(l).replace(".", "_")+".png")
+                plt.savefig("ResultPlots/mppi_temperature/"+env+"/"+str(T)+"_mppi_l"+str(l).replace(".", "_")+".png")
                 plt.close(fig)
             T_perf_median.append(lam_perf_median)
             T_perf_25th.append(lam_perf_25th)
@@ -164,9 +164,9 @@ def generate_plots():
                              " T:"+str(T))
             [tmp.legend(loc="upper left") for tmp in ax_exp]
             fig_exp.tight_layout()
-            fig_exp.savefig("paper/mppi_temperature/"+env+"/combined"+str(T)+"_mppi.png")
+            fig_exp.savefig("ResultPlots/mppi_temperature/"+env+"/combined"+str(T)+"_mppi.png")
             # extent = ax_exp[-1].get_window_extent().transformed(fig_exp.dpi_scale_trans.inverted())
-            # fig_exp.savefig("paper/mppi_temperature/"+env+"/"+str(T)+"_mppi_combined_cost_only.png", bbox_inches=extent.expanded(1.1, 1.2))
+            # fig_exp.savefig("ResultPlots/mppi_temperature/"+env+"/"+str(T)+"_mppi_combined_cost_only.png", bbox_inches=extent.expanded(1.1, 1.2))
             plt.close(fig_exp)
 
         T_perf_median = np.array(T_perf_median)
@@ -191,7 +191,7 @@ def generate_plots():
         ax_perf.legend(loc="upper left")
         ax_perf.grid()
         plt.show()
-        fig_perf.savefig("paper/mppi_temperature/"+env+"_mppi_summary.png")
+        fig_perf.savefig("ResultPlots/mppi_temperature/"+env+"_mppi_summary.png")
         plt.close(fig_perf)
     print("Done")
 

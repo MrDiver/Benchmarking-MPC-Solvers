@@ -75,14 +75,14 @@ def generate_plots():
                    ("AcrobotEnvironment", 4, 0.5, 0.1, 25, 10)]
 
     for env, statesize,temp, ratio, max_iter, T in env_configs:
-        if not os.path.exists("paper"):
-            os.mkdir("paper")
-        if not os.path.exists("paper/noise_test"):
-            os.mkdir("paper/noise_test")
-        if not os.path.exists("paper/noise_test/" + env):
-            os.mkdir("paper/noise_test/" + env)
-        if not os.path.exists("paper/noise_test/" + env + "/actuation_noise"):
-            os.mkdir("paper/noise_test/" + env + "/actuation_noise")
+        if not os.path.exists("../ResultPlots"):
+            os.mkdir("../ResultPlots")
+        if not os.path.exists("../ResultPlots/noise_test"):
+            os.mkdir("../ResultPlots/noise_test")
+        if not os.path.exists("ResultPlots/noise_test/" + env):
+            os.mkdir("ResultPlots/noise_test/" + env)
+        if not os.path.exists("ResultPlots/noise_test/" + env + "/actuation_noise"):
+            os.mkdir("ResultPlots/noise_test/" + env + "/actuation_noise")
 
         # Generate Actuation Noise Plots
         solver_median = []
@@ -194,7 +194,7 @@ def generate_plots():
                 fig.tight_layout()
 
                 plt.savefig(
-                    "paper/noise_test/" + env + "/actuation_noise/" + str(solver) +"_averaged_n" +str(actuation_noise).replace(".", "_")+ ".png")
+                    "ResultPlots/noise_test/" + env + "/actuation_noise/" + str(solver) +"_averaged_n" +str(actuation_noise).replace(".", "_")+ ".png")
                 plt.close(fig)
 
             solver_median.append(noise_median)
@@ -217,7 +217,7 @@ def generate_plots():
             ax_noise.legend(loc="upper left")
             fig_noise.suptitle(solver + " noise test " + env)
 
-            fig_noise.savefig("paper/noise_test/" + env + "/actuation_noise/" + str(solver)+"_summary.png")
+            fig_noise.savefig("ResultPlots/noise_test/" + env + "/actuation_noise/" + str(solver)+"_summary.png")
             plt.close(fig_noise)
 
         ax_comb.set_xticks(noise_values)
@@ -227,7 +227,7 @@ def generate_plots():
         ax_comb.set_ylabel("Performance Cost")
         ax_comb.legend(loc="upper left")
         fig_comb.suptitle("Actuation Noise Test Summary " + env + " | T =" +str(T))
-        fig_comb.savefig("paper/noise_test/" + env + "_actuation_noise_combined_summary.png")
+        fig_comb.savefig("ResultPlots/noise_test/" + env + "_actuation_noise_combined_summary.png")
 
     """
     ###############################
@@ -238,14 +238,14 @@ def generate_plots():
     """
 
     for env, statesize, temp, ratio, max_iter, T in env_configs:
-        if not os.path.exists("paper"):
-            os.mkdir("paper")
-        if not os.path.exists("paper/noise_test"):
-            os.mkdir("paper/noise_test")
-        if not os.path.exists("paper/noise_test/" + env):
-            os.mkdir("paper/noise_test/" + env)
-        if not os.path.exists("paper/noise_test/" + env + "/sensor_noise"):
-            os.mkdir("paper/noise_test/" + env + "/sensor_noise")
+        if not os.path.exists("../ResultPlots"):
+            os.mkdir("../ResultPlots")
+        if not os.path.exists("../ResultPlots/noise_test"):
+            os.mkdir("../ResultPlots/noise_test")
+        if not os.path.exists("ResultPlots/noise_test/" + env):
+            os.mkdir("ResultPlots/noise_test/" + env)
+        if not os.path.exists("ResultPlots/noise_test/" + env + "/sensor_noise"):
+            os.mkdir("ResultPlots/noise_test/" + env + "/sensor_noise")
 
         # Generate Actuation Noise Plots
         solver_median = []
@@ -357,7 +357,7 @@ def generate_plots():
                 fig.tight_layout()
 
                 plt.savefig(
-                    "paper/noise_test/" + env + "/sensor_noise/" + str(solver) + "_averaged_n" + str(
+                    "ResultPlots/noise_test/" + env + "/sensor_noise/" + str(solver) + "_averaged_n" + str(
                         actuation_noise).replace(".", "_") + ".png")
                 plt.close(fig)
 
@@ -381,7 +381,7 @@ def generate_plots():
             ax_noise.legend(loc="upper left")
             fig_noise.suptitle(solver + " noise test " + env)
 
-            fig_noise.savefig("paper/noise_test/" + env + "/sensor_noise/" + str(solver) + "_summary.png")
+            fig_noise.savefig("ResultPlots/noise_test/" + env + "/sensor_noise/" + str(solver) + "_summary.png")
             plt.close(fig_noise)
 
         ax_comb.set_xticks(noise_values)
@@ -391,7 +391,7 @@ def generate_plots():
         ax_comb.set_ylabel("Performance Cost")
         ax_comb.legend(loc="upper left")
         fig_comb.suptitle("Sensor Noise Test Summary " + env + " | T =" +str(T))
-        fig_comb.savefig("paper/noise_test/" + env + "_sensor_noise_combined_summary.png")
+        fig_comb.savefig("ResultPlots/noise_test/" + env + "_sensor_noise_combined_summary.png")
 
 
 if __name__ == '__main__':
