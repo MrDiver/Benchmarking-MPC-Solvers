@@ -23,12 +23,12 @@ def generate_plots():
     collections = [db.cem_ratios, db.ilqr_runs2, db.mppi_samples, db.temperature_exp]
 
     for env, statesize in [("PendulumEnvironment", 2), ("CartpoleSwingupEnvironment", 4), ("AcrobotEnvironment", 4)]:
-        if not os.path.exists("paper"):
-            os.mkdir("paper")
-        if not os.path.exists("paper/time_comparison"):
-            os.mkdir("paper/time_comparison")
-        if not os.path.exists("paper/time_comparison/" + env):
-            os.mkdir("paper/time_comparison/" + env)
+        if not os.path.exists("../ResultPlots"):
+            os.mkdir("../ResultPlots")
+        if not os.path.exists("../ResultPlots/time_comparison"):
+            os.mkdir("../ResultPlots/time_comparison")
+        if not os.path.exists("ResultPlots/time_comparison/" + env):
+            os.mkdir("ResultPlots/time_comparison/" + env)
 
         fig = plt.figure()
         ax = fig.subplots(2,2)

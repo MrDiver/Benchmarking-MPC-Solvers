@@ -80,12 +80,12 @@ def generate_plots():
 
     if generate_cem:
         for env, statesize in [("PendulumEnvironment", 2), ("CartpoleSwingupEnvironment", 4), ("AcrobotEnvironment", 4)]:
-            if not os.path.exists("paper"):
-                os.mkdir("paper")
-            if not os.path.exists("paper/cem_ratio"):
-                os.mkdir("paper/cem_ratio")
-            if not os.path.exists("paper/cem_ratio/" + env):
-                os.mkdir("paper/cem_ratio/" + env)
+            if not os.path.exists("../ResultPlots"):
+                os.mkdir("../ResultPlots")
+            if not os.path.exists("../ResultPlots/cem_ratio"):
+                os.mkdir("../ResultPlots/cem_ratio")
+            if not os.path.exists("ResultPlots/cem_ratio/" + env):
+                os.mkdir("ResultPlots/cem_ratio/" + env)
 
 
             """
@@ -193,7 +193,7 @@ def generate_plots():
                             fig.tight_layout()
 
                             plt.savefig(
-                                "paper/cem_ratio/" + env + "/" + str(T) + "_" + str(K) +"_cem_r" + str(ratio).replace(".", "_") + ".png")
+                                "ResultPlots/cem_ratio/" + env + "/" + str(T) + "_" + str(K) +"_cem_r" + str(ratio).replace(".", "_") + ".png")
 
                         if generate_combined_exps:
                             ax_exp[-1].fill_between(range(horizon_length),
@@ -215,9 +215,9 @@ def generate_plots():
                         [tmp.legend(loc="upper left") for tmp in ax_exp]
                         fig_exp.tight_layout()
                         print(T,K,env)
-                        fig_exp.savefig("paper/cem_ratio/" + env + "/combined" + str(T) + "_" + str(K) + "_cem.png")
+                        fig_exp.savefig("ResultPlots/cem_ratio/" + env + "/combined" + str(T) + "_" + str(K) + "_cem.png")
                         # extent = ax_exp[-1].get_window_extent().transformed(fig_exp.dpi_scale_trans.inverted())
-                        # fig_exp.savefig("paper/mppi_temperature/"+env+"/"+str(T)+"_mppi_combined_cost_only.png", bbox_inches=extent.expanded(1.1, 1.2))
+                        # fig_exp.savefig("ResultPlots/mppi_temperature/"+env+"/"+str(T)+"_mppi_combined_cost_only.png", bbox_inches=extent.expanded(1.1, 1.2))
                     plt.close(fig_exp)
 
                 K_perf_median = np.array(K_perf_median)
@@ -243,7 +243,7 @@ def generate_plots():
                     ax_perf.legend(loc="upper left")
                     ax_perf.grid()
                     plt.show()
-                    fig_perf.savefig("paper/cem_ratio/" + env + "_"+str(T)+"_cem_summary.png")
+                    fig_perf.savefig("ResultPlots/cem_ratio/" + env + "_"+str(T)+"_cem_summary.png")
                     plt.close(fig_perf)
 
             T_perf_median = np.mean(T_perf_median, axis=0)
@@ -264,7 +264,7 @@ def generate_plots():
             ax_perf.legend(loc="upper left")
             ax_perf.grid()
             plt.show()
-            fig_perf.savefig("paper/cem_ratio/Final_" + env + "_cem_summary.png")
+            fig_perf.savefig("ResultPlots/cem_ratio/Final_" + env + "_cem_summary.png")
             plt.close(fig_perf)
 
         """
@@ -338,7 +338,7 @@ def generate_plots():
             ax_perf.legend(loc="upper left")
             ax_perf.grid()
             plt.show()
-            fig_perf.savefig("paper/cem_ratio/TimeHorizon_" + env + "_cem_summary.png")
+            fig_perf.savefig("ResultPlots/cem_ratio/TimeHorizon_" + env + "_cem_summary.png")
             plt.close(fig_perf)
 
 
@@ -355,12 +355,12 @@ def generate_plots():
     Ks = [10, 20, 50, 100, 200, 500]
     if generate_mppi:
         for env, statesize in [("PendulumEnvironment", 2), ("CartpoleSwingupEnvironment", 4), ("AcrobotEnvironment", 4)]:
-            if not os.path.exists("paper"):
-                os.mkdir("paper")
-            if not os.path.exists("paper/mppi_samples"):
-                os.mkdir("paper/mppi_samples")
-            if not os.path.exists("paper/mppi_samples/" + env):
-                os.mkdir("paper/mppi_samples/" + env)
+            if not os.path.exists("../ResultPlots"):
+                os.mkdir("../ResultPlots")
+            if not os.path.exists("../ResultPlots/mppi_samples"):
+                os.mkdir("../ResultPlots/mppi_samples")
+            if not os.path.exists("ResultPlots/mppi_samples/" + env):
+                os.mkdir("ResultPlots/mppi_samples/" + env)
 
             T_perf_median = [] #(Ts,K_perf)
             T_perf_25th = []
@@ -456,7 +456,7 @@ def generate_plots():
                         fig.tight_layout()
 
                         plt.savefig(
-                            "paper/mppi_samples/" + env + "/" + str(T) + "_" + str(K) + "_mppi" + ".png")
+                            "ResultPlots/mppi_samples/" + env + "/" + str(T) + "_" + str(K) + "_mppi" + ".png")
 
                     if generate_combined_exps:
                         ax_exp[-1].fill_between(range(horizon_length),
@@ -473,9 +473,9 @@ def generate_plots():
                     [tmp.legend(loc="upper left") for tmp in ax_exp]
                     fig_exp.tight_layout()
                     print(T, env)
-                    fig_exp.savefig("paper/mppi_samples/" + env + "/combined" + str(T) + "_mppi.png")
+                    fig_exp.savefig("ResultPlots/mppi_samples/" + env + "/combined" + str(T) + "_mppi.png")
                     # extent = ax_exp[-1].get_window_extent().transformed(fig_exp.dpi_scale_trans.inverted())
-                    # fig_exp.savefig("paper/mppi_temperature/"+env+"/"+str(T)+"_mppi_combined_cost_only.png", bbox_inches=extent.expanded(1.1, 1.2))
+                    # fig_exp.savefig("ResultPlots/mppi_temperature/"+env+"/"+str(T)+"_mppi_combined_cost_only.png", bbox_inches=extent.expanded(1.1, 1.2))
                 plt.close(fig_exp)
 
                 K_perf_median = np.array(K_perf_median)
@@ -504,7 +504,7 @@ def generate_plots():
                 ax_perf.legend(loc="upper left")
                 ax_perf.grid()
                 plt.show()
-                fig_perf.savefig("paper/mppi_samples/" + env + "_mppi_summary.png")
+                fig_perf.savefig("ResultPlots/mppi_samples/" + env + "_mppi_summary.png")
                 plt.close(fig_perf)
 
 

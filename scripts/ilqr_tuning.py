@@ -46,12 +46,12 @@ def generate_plots():
     db = client.parameter_tuning
     collection = db.ilqr_runs2
     for env, statesize in [("PendulumEnvironment", 2), ("CartpoleSwingupEnvironment", 4), ("AcrobotEnvironment", 4)]:
-        if not os.path.exists("paper"):
-            os.mkdir("paper")
-        if not os.path.exists("paper/ilqr_iterations"):
-            os.mkdir("paper/ilqr_iterations")
-        if not os.path.exists("paper/ilqr_iterations/" + env):
-            os.mkdir("paper/ilqr_iterations/" + env)
+        if not os.path.exists("../ResultPlots"):
+            os.mkdir("../ResultPlots")
+        if not os.path.exists("../ResultPlots/ilqr_iterations"):
+            os.mkdir("../ResultPlots/ilqr_iterations")
+        if not os.path.exists("ResultPlots/ilqr_iterations/" + env):
+            os.mkdir("ResultPlots/ilqr_iterations/" + env)
 
         M_perf_median = []
         M_perf_25th = []
@@ -152,16 +152,16 @@ def generate_plots():
                 fig.tight_layout()
 
                 plt.savefig(
-                    "paper/ilqr_iterations/" + env + "/" + str(T) + "_ilqr_m" + str(max_iter) + ".png")
+                    "ResultPlots/ilqr_iterations/" + env + "/" + str(T) + "_ilqr_m" + str(max_iter) + ".png")
                 plt.close(fig)
 
             fig_exp.suptitle("ILQR Iterations " + env +
                              " Maximum Iteration:" + str(max_iter))
             [tmp.legend(loc="upper left") for tmp in ax_exp]
             fig_exp.tight_layout()
-            fig_exp.savefig("paper/ilqr_iterations/" + env + "/combined" + str(max_iter) + "_ilqr.png")
+            fig_exp.savefig("ResultPlots/ilqr_iterations/" + env + "/combined" + str(max_iter) + "_ilqr.png")
             # extent = ax_exp[-1].get_window_extent().transformed(fig_exp.dpi_scale_trans.inverted())
-            # fig_exp.savefig("paper/mppi_temperature/"+env+"/"+str(T)+"_mppi_combined_cost_only.png", bbox_inches=extent.expanded(1.1, 1.2))
+            # fig_exp.savefig("ResultPlots/mppi_temperature/"+env+"/"+str(T)+"_mppi_combined_cost_only.png", bbox_inches=extent.expanded(1.1, 1.2))
             plt.close(fig_exp)
 
             M_perf_median.append(T_perf_median)
@@ -186,7 +186,7 @@ def generate_plots():
         ax_perf.legend(loc="upper left")
         ax_perf.grid()
         plt.show()
-        fig_perf.savefig("paper/ilqr_iterations/" + env + "_ilqr_summary.png")
+        fig_perf.savefig("ResultPlots/ilqr_iterations/" + env + "_ilqr_summary.png")
         plt.close(fig_perf)
 
 

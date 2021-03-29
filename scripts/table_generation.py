@@ -78,10 +78,10 @@ def generate_tables():
 
     #Generate Table part
     for env, statesize in [("PendulumEnvironment", 2), ("CartpoleSwingupEnvironment", 4), ("AcrobotEnvironment", 4)]:
-        if not os.path.exists("paper"):
-            os.mkdir("paper")
-        if not os.path.exists("paper/time_comparison"):
-            os.mkdir("paper/time_comparison")
+        if not os.path.exists("../ResultPlots"):
+            os.mkdir("../ResultPlots")
+        if not os.path.exists("../ResultPlots/time_comparison"):
+            os.mkdir("../ResultPlots/time_comparison")
 
         # Generate Time Horizon Tables
         df = pd.DataFrame()
@@ -96,7 +96,7 @@ def generate_tables():
         sorted_table = pd.pivot_table(df,[names["avg"],names["min"], names["med"],names["q25"],names["q75"],names["time"]],["T","Solver"])
 
         latex_format =  format_table(sorted_table)
-        write_latex_table("paper/time_comparison/"+env+"_T_table.tex",latex_format)
+        write_latex_table("ResultPlots/time_comparison/"+env+"_T_table.tex",latex_format)
 
         # Generate Sample Tables
         df = pd.DataFrame()
@@ -116,7 +116,7 @@ def generate_tables():
                                                names["time"]], ["K", "Solver"])
 
         latex_format = format_table(sorted_table)
-        write_latex_table("paper/time_comparison/" + env + "_K_table.tex", latex_format)
+        write_latex_table("ResultPlots/time_comparison/" + env + "_K_table.tex", latex_format)
 
 
 if __name__ == '__main__':
