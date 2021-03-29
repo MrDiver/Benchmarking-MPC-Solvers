@@ -11,7 +11,7 @@ $ python -m pip install .
 After a successfull install you will be able to run the basic test script to execute the Agents in an Environment.
 
 ```shell
-$ python scripts/test.py
+$ python scripts/experiment_test.py
 ```
 
 # Data of the experiments is publicly available
