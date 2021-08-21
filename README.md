@@ -14,7 +14,7 @@ After a successfull install you will be able to run the basic test script to exe
 $ python scripts/experiment_test.py
 ```
 
-# Data of the experiments is publicly available
+# Data of the experiments is publicly available (Currently offline please write me a mail on interest)
 
 The data is stored on a MongoDB Database and can be accessed through the following details with compass or directly in python
 
